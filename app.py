@@ -61,7 +61,6 @@ You are an AI market analyst. Generate a **detailed industry report** for the in
 **Source:** {wikipedia_url}
 """
 
-    """
     
     response = client.chat.completions.create(
         model="gpt-4o",
