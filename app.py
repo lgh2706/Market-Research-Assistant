@@ -72,6 +72,10 @@ def generate_industry_report(industry):
     
     return pdf_filename
 
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 @app.route('/generate_report', methods=['POST'])
 def generate_report():
     industry = request.form['industry']
