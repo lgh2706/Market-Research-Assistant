@@ -17,13 +17,14 @@ client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
         language="en",
-        user_agent="MarketResearchAssistant/1.0 (contact: your-email@example.com)"
+        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
     )
     page = wiki_wiki.page(industry)
     
     if not page.exists():
         return None
     
+    wikipedia_url = page.fullurl
     content = page.summary[:4000]
     prompt = f"""
     You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
@@ -37,6 +38,7 @@ def generate_industry_report(industry):
     7️⃣ **Future Outlook** - Predictions and trends for the next 5-10 years.
     
     Ensure the report is well-structured, informative, and professional.
+    Source: {wikipedia_url}
     """
     
     response = client.chat.completions.create(
@@ -67,6 +69,9 @@ def generate_industry_report(industry):
         if index < len(content_split):
             pdf.multi_cell(0, 8, content_split[index].split(f'{index + 2}️⃣')[0])
         pdf.ln(5)
+    
+    pdf.set_font("Arial", style='I', size=10)
+    pdf.multi_cell(0, 8, f"Source: {wikipedia_url}")
     
     pdf.output(pdf_filename)
     
