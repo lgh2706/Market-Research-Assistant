@@ -15,7 +15,11 @@ app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def generate_industry_report(industry):
-    wiki_wiki = wikipediaapi.Wikipedia("en")
+    wiki_wiki = wikipediaapi.Wikipedia(
+    language="en",
+    user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+)
+
     page = wiki_wiki.page(industry)
     
     if not page.exists():
