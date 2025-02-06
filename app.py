@@ -43,7 +43,7 @@ def generate_industry_report(industry):
     """
     
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-40",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1500
     )
