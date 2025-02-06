@@ -17,7 +17,7 @@ client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
         language="en",
-        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghel@gmail.com)"
     )
     page = wiki_wiki.page(industry)
     
@@ -31,20 +31,21 @@ def generate_industry_report(industry):
     The report must include:
     1️⃣ **Industry Overview** - History, purpose, and market presence.
     2️⃣ **Market Size & Growth Trends** - Revenue, CAGR, and key statistics.
-    3️⃣ **Key Competitors** - Top 5 companies with brief descriptions.
-    4️⃣ **Major Challenges & Opportunities** - Risks, regulations, investments.
+    3️⃣ **Key Competitors** - Top 5 companies with brief descriptions and market share.
+    4️⃣ **Major Challenges & Opportunities** - Regulatory risks, economic impacts, and new investments.
     5️⃣ **Latest Innovations/Disruptions** - AI, sustainability, emerging technology trends.
     6️⃣ **Market Segmentation** - Breakdown by region, demographics, or product type.
     7️⃣ **Future Outlook** - Predictions and trends for the next 5-10 years.
     
-    Ensure the report is well-structured, informative, and professional.
-    Source: {wikipedia_url}
+    Provide a well-structured, informative, and professional report.
+    
+    **Source:** {wikipedia_url}
     """
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=1000
+        max_tokens=1500
     )
     
     report_text = response.choices[0].message.content
@@ -71,7 +72,7 @@ def generate_industry_report(industry):
         pdf.ln(5)
     
     pdf.set_font("Arial", style='I', size=10)
-    pdf.multi_cell(0, 8, f"Source: {wikipedia_url}")
+    pdf.multi_cell(0, 8, f"**Source:** {wikipedia_url}")
     
     pdf.output(pdf_filename)
     
