@@ -25,11 +25,21 @@ def generate_industry_report(industry):
         return None
     
     content = page.summary[:4000]
-    prompt = f"Summarize the following industry report: {content}"
+    prompt = f"""
+    You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
+    The report must include:
+    1️⃣ **Industry Overview** - History, purpose, and market presence.
+    2️⃣ **Market Size & Growth Trends** - Revenue, CAGR, and key statistics.
+    3️⃣ **Key Competitors** - Top companies in the industry.
+    4️⃣ **Major Challenges & Opportunities** - Risks, regulations, investments.
+    5️⃣ **Latest Innovations/Disruptions** - AI, sustainability, emerging technology trends.
+    Ensure the report is well-structured, informative, and professional.
+    """
     
     response = client.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1500
     )
     
     report_text = response.choices[0].message.content
@@ -37,6 +47,9 @@ def generate_industry_report(industry):
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_font("Arial", style='B', size=16)
+    pdf.cell(200, 10, f"{industry} Industry Report", ln=True, align='C')
+    pdf.ln(10)
     pdf.set_font("Arial", size=12)
     pdf.multi_cell(0, 10, report_text)
     pdf.output(pdf_filename)
