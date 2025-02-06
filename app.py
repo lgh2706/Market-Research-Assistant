@@ -17,7 +17,7 @@ client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
         language="en",
-        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghel@gmail.com)"
+        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
     )
     page = wiki_wiki.page(industry)
     
@@ -43,7 +43,7 @@ def generate_industry_report(industry):
     """
     
     response = client.chat.completions.create(
-        model="gpt-40",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1500
     )
