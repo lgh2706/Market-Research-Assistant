@@ -12,12 +12,12 @@ import os
 app = Flask(__name__)
 
 # OpenAI API Key (Replace with your own key)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
         language="en",
-        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+        user_agent="MarketResearchAssistant/1.0 (contact: your-email@example.com)"
     )
     page = wiki_wiki.page(industry)
     
@@ -27,12 +27,12 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = f"Summarize the following industry report: {content}"
     
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     )
     
-    report_text = response["choices"][0]["message"]["content"]
+    report_text = response.choices[0].message.content
     
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
