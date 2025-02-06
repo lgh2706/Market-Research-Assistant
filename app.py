@@ -43,11 +43,15 @@ def generate_industry_report(industry):
     **Source:** {wikipedia_url}
     """
     
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=1500
-    )
+    
+
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": prompt}]
+)
+
     
     report_text = response["choices"][0]["message"]["content"]
     
