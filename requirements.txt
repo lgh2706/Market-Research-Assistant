@@ -1,0 +1,8 @@
+Flask
+gunicorn
+openai
+wikipedia-api
+pytrends
+fpdf
+pandas
+scikit-learn
