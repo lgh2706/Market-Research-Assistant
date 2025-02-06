@@ -43,7 +43,7 @@ def generate_industry_report(industry):
     **Source:** {wikipedia_url}
     """
     
-    
+    import openai
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
