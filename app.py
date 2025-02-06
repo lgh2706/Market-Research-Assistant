@@ -12,10 +12,13 @@ import os
 app = Flask(__name__)
 
 # OpenAI API Key (Replace with your own key)
-openai.api_key = "your_openai_api_key"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def generate_industry_report(industry):
-    wiki_wiki = wikipediaapi.Wikipedia("en")
+    wiki_wiki = wikipediaapi.Wikipedia(
+        language="en",
+        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+    )
     page = wiki_wiki.page(industry)
     
     if not page.exists():
@@ -56,7 +59,7 @@ def get_google_trends(industry):
 
 def run_predictive_analysis(csv_file):
     df = pd.read_csv(csv_file)
-    X = df.drop(columns=["isPartial", "date"])
+    X = df.drop(columns=["isPartial", "date"], errors='ignore')
     y = X.pop(X.columns[0])
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -93,4 +96,4 @@ def predict_analysis():
     return "No trends data available for analysis."
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=10000, debug=True)
