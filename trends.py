@@ -81,10 +81,10 @@ def generate_trends_csv(industry):
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
 
     # Ensure the directory exists before saving files
-    os.makedirs("/mnt/data", exist_ok=True)
+    os.makedirs("/tmp", exist_ok=True)
 
-    primary_csv = f"/mnt/data/{industry}_Google_Trends.csv" if not primary_data.empty else None
-    related_csv = f"/mnt/data/{related_industry}_Google_Trends.csv" if related_industry and not related_data.empty else None
+    primary_csv = f"/tmp/{industry}_Google_Trends.csv" if not primary_data.empty else None
+    related_csv = f"/tmp/{related_industry}_Google_Trends.csv" if related_industry and not related_data.empty else None
 
     if primary_csv:
         primary_data.to_csv(primary_csv)
