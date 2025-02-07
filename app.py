@@ -12,7 +12,7 @@ app = Flask(__name__)
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
 
-# Ensure writable directory exists for CSV files
+# Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 os.makedirs(GENERATED_DIR, exist_ok=True)
