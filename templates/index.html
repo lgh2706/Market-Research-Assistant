@@ -55,6 +55,20 @@
             border-radius: 5px;
             display: inline-block;
         }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -68,12 +82,23 @@
         <!-- Buttons for Report and Google Trends -->
         <button type="button" class="btn-report" onclick="generateReport()">Generate Report</button>
         <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
+        
+        <!-- Loading Icon -->
+        <div id="loading" class="loader"></div>
     </form>
 
     <!-- Results Section -->
     <div id="result"></div>
 
     <script>
+        function showLoading() {
+            document.getElementById("loading").style.display = "block";
+        }
+        
+        function hideLoading() {
+            document.getElementById("loading").style.display = "none";
+        }
+
         function generateReport() {
             let industry = document.getElementById("industry").value;
             if (!industry) {
@@ -81,6 +106,7 @@
                 return;
             }
             
+            showLoading();
             fetch("/generate_report", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -88,6 +114,7 @@
             })
             .then(response => response.blob())
             .then(blob => {
+                hideLoading();
                 let url = window.URL.createObjectURL(blob);
                 let a = document.createElement("a");
                 a.href = url;
@@ -96,7 +123,10 @@
                 a.click();
                 document.body.removeChild(a);
             })
-            .catch(error => console.error("Error generating report:", error));
+            .catch(error => {
+                hideLoading();
+                console.error("Error generating report:", error);
+            });
         }
 
         function getTrends() {
@@ -106,6 +136,7 @@
                 return;
             }
             
+            showLoading();
             fetch("/get_trends", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -113,6 +144,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 let resultDiv = document.getElementById("result");
                 resultDiv.innerHTML = `
                     <h2>Google Trends Data Available</h2>
@@ -120,7 +152,10 @@
                     ${data.related_trends ? `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>` : ""}
                 `;
             })
-            .catch(error => console.error("Error fetching Google Trends:", error));
+            .catch(error => {
+                hideLoading();
+                console.error("Error fetching Google Trends:", error);
+            });
         }
     </script>
 </body>
