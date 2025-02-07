@@ -24,7 +24,7 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = f"Summarize the following industry report: {content}"
     
-                    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}]
