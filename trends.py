@@ -10,44 +10,33 @@ def get_industry_keywords(industry):
     openai_api_key = os.getenv("OPENAI_API_KEY")
     client = openai.OpenAI(api_key=openai_api_key)
     
-    # GPT Prompt to determine the most relevant related industry
     related_industry_prompt = f"""
-    Given the industry "{industry}", suggest a related industry that has strong connections to it.
+    Given the industry "{industry}", suggest a closely related industry.
     Provide only the industry name.
     """
-
     related_industry_response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": related_industry_prompt}]
     )
-    
     related_industry = related_industry_response.choices[0].message.content.strip()
 
-    # GPT Prompt to generate 5 keywords for the primary industry
     primary_keywords_prompt = f"""
-    Generate 5 highly relevant keywords related to the industry "{industry}".
-    Provide only a comma-separated list of keywords.
+    Generate 5 industry-specific keywords for "{industry}", separated by commas.
     """
-
     primary_keywords_response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": primary_keywords_prompt}]
     )
-    
-    primary_keywords = primary_keywords_response.choices[0].message.content.strip().split(",")
+    primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
 
-    # GPT Prompt to generate 5 different keywords for the related industry
     related_keywords_prompt = f"""
-    Generate 5 highly relevant keywords related to the industry "{related_industry}" that are different from "{industry}".
-    Provide only a comma-separated list of keywords.
+    Generate 5 industry-specific keywords for "{related_industry}", separated by commas.
     """
-
     related_keywords_response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": related_keywords_prompt}]
     )
-    
-    related_keywords = related_keywords_response.choices[0].message.content.strip().split(",")
+    related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")]
 
     print(f"✅ Primary Industry: {industry}, Keywords: {primary_keywords}")
     print(f"✅ Related Industry: {related_industry}, Keywords: {related_keywords}")
@@ -63,12 +52,10 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends data for: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-
-    # Introduce a moderate delay to prevent rate limiting
-    time.sleep(random.uniform(5, 10))
+    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
     try:
-        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')  # Fetch data for 5 keywords
+        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')
         response = pytrends.interest_over_time()
         
         if response.empty:
@@ -87,12 +74,11 @@ def fetch_google_trends_data(keywords):
 
 def generate_trends_csv(industry):
     """Generate two CSV files for primary and related industry trends."""
-    primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)  # Get industry keywords
+    primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
 
-    # Ensure the directory exists before saving files
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
     os.makedirs(GENERATED_DIR, exist_ok=True)
