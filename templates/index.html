@@ -69,7 +69,7 @@
 
     <form id="industryForm">
         <label for="industry">Enter Industry Name:</label><br>
-        <input type="text" id="industry" name="industry" required><br>
+        <input type="text" id="industry" name="industry" required oninput="clearResults()"><br>
         
         <button type="button" class="btn-report" onclick="generateReport()">Generate Report</button>
         <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
@@ -86,6 +86,10 @@
         
         function hideLoading() {
             document.getElementById("loading").style.display = "none";
+        }
+        
+        function clearResults() {
+            document.getElementById("result").innerHTML = "";
         }
 
         function generateReport() {
@@ -141,7 +145,7 @@
                 hideLoading();
                 let resultDiv = document.getElementById("result");
                 resultDiv.innerHTML = `<h2>Google Trends Data Available</h2>`;
-
+                
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
                 } else {
