@@ -28,11 +28,11 @@ def generate_industry_report(industry):
     prompt = f"Summarize the following industry report: {content}"
     
     response = openai.ChatCompletion.create(
-        model="gpt-40",
-        messages=[{"role": "user", "content": prompt}]
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}]
     )
-    
-    report_text = response["choices"][0]["message"]["content"]
+    report_text = response.choices[0].message.content
+
     
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
