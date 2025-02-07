@@ -23,7 +23,7 @@ def get_industry_keywords(industry):
     primary_keywords_prompt = f"""
     Generate exactly 5 industry-specific keywords for "{industry}".
     Ensure these keywords are meaningful, industry-specific, and distinct from each other.
-    Provide only a comma-separated list of keywords.
+    Provide only a comma-separated list of keywords, and do not change the words.
     """
     primary_keywords_response = client.chat.completions.create(
         model="gpt-4",
@@ -34,7 +34,7 @@ def get_industry_keywords(industry):
     related_keywords_prompt = f"""
     Generate exactly 5 industry-specific keywords for "{related_industry}" that do not overlap with "{industry}".
     Ensure these keywords are meaningful, industry-specific, and distinct from the primary industry.
-    Provide only a comma-separated list of keywords.
+    Provide only a comma-separated list of keywords, and do not change the words.
     """
     related_keywords_response = client.chat.completions.create(
         model="gpt-4",
@@ -77,7 +77,7 @@ def fetch_google_trends_data(keywords):
         return pd.DataFrame()
 
 def generate_trends_csv(industry):
-    """Generate two CSV files for primary and related industry trends."""
+    """Generate two CSV files for primary and related industry trends with exact UI-selected keywords."""
     primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
