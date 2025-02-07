@@ -8,11 +8,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 
-# OpenAI API Key (Replace with your own key)
-openai.api_key = "your_openai_api_key"
+# OpenAI API Key from environment variable
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=openai_api_key)
 
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en")
@@ -24,14 +26,13 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = f"Summarize the following industry report: {content}"
     
-                        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}]
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
     )
-    
-        report_text = response.choices[0].message["content"]
-    
+
+    report_text = response.choices[0].message.content
+
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -95,21 +96,6 @@ def generate_report():
     industry = request.form['industry']
     pdf_file = generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
-
-@app.route('/get_trends', methods=['POST'])
-def get_trends():
-    industry = request.form['industry']
-    csv_file = get_google_trends(industry)
-    return send_file(csv_file, as_attachment=True) if csv_file else "No data available."
-
-@app.route('/predict_analysis', methods=['POST'])
-def predict_analysis():
-    industry = request.form['industry']
-    csv_file = f"{industry}_Google_Trends.csv"
-    if os.path.exists(csv_file):
-        result = run_predictive_analysis(csv_file)
-        return result
-    return "No trends data available for analysis."
 
 if __name__ == '__main__':
     app.run(debug=True)
