@@ -12,12 +12,15 @@ def get_industry_keywords(industry):
     
     if not page.exists():
         return []
-    
+
     content = page.summary[:2000]  # Limit text extraction to avoid large data processing
     words = content.lower().split()
     common_words = [word.strip('.,()') for word in words if len(word) > 3]
     keyword_counts = pd.Series(common_words).value_counts()
     keywords = keyword_counts.index[:5].tolist()
+    
+    print(f"Primary Industry Keywords: {keywords}")  # Debugging
+    
     return keywords
 
 def find_related_industry(industry):
@@ -31,15 +34,29 @@ def find_related_industry(industry):
         return None
     
     links = list(page.links.keys())
+    
+    print(f"Related Industry: {links[0] if links else None}")  # Debugging
+    
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data for given keywords."""
+    if not keywords:
+        print("No keywords provided to fetch Google Trends data.")
+        return pd.DataFrame()
+
     pytrends = TrendReq(hl='en-US', tz=360)
     pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
     data = pytrends.interest_over_time()
+
+    if data.empty:
+        print("Google Trends data is empty.")
+    
     if 'isPartial' in data.columns:
         data = data.drop(columns=['isPartial'])
+
+    print(f"Fetched Google Trends Data:\n{data.head()}")  # Debugging
+    
     return data
 
 def generate_trends_csv(industry):
@@ -47,16 +64,19 @@ def generate_trends_csv(industry):
     primary_keywords = get_industry_keywords(industry)
     related_industry = find_related_industry(industry)
     related_keywords = get_industry_keywords(related_industry) if related_industry else []
-    
+
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
-    
-    primary_csv = f"/mnt/data/{industry}_Google_Trends.csv"
-    related_csv = f"/mnt/data/{related_industry}_Google_Trends.csv" if related_industry else None
-    
-    if not primary_data.empty:
+
+    primary_csv = f"/mnt/data/{industry}_Google_Trends.csv" if not primary_data.empty else None
+    related_csv = f"/mnt/data/{related_industry}_Google_Trends.csv" if related_industry and not related_data.empty else None
+
+    if primary_csv:
         primary_data.to_csv(primary_csv)
-    if not related_data.empty and related_industry:
+        print(f"Primary Industry CSV Generated: {primary_csv}")  # Debugging
+
+    if related_csv:
         related_data.to_csv(related_csv)
-    
+        print(f"Related Industry CSV Generated: {related_csv}")  # Debugging
+
     return primary_csv, related_csv
