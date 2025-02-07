@@ -89,8 +89,8 @@ def generate_trends_csv(industry):
     related_industry = find_related_industry(industry)
     related_primary_keywords, related_secondary_keywords = get_industry_keywords(related_industry) if related_industry else ([], [])
 
-    primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
-    related_data = fetch_google_trends_data(related_primary_keywords) if related_primary_keywords else pd.DataFrame()
+    primary_data = fetch_google_trends_data(primary_keywords + secondary_keywords) if primary_keywords else pd.DataFrame()
+    related_data = fetch_google_trends_data(related_primary_keywords + related_secondary_keywords) if related_primary_keywords else pd.DataFrame()
 
     # Ensure the directory exists before saving files
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
