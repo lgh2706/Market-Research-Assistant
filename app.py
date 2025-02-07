@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, send_from_directory
 import openai
 import wikipediaapi
 import os
@@ -11,6 +11,11 @@ app = Flask(__name__)
 # OpenAI API Key from environment variable
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
+
+# Ensure writable directory exists for CSV files
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
+os.makedirs(GENERATED_DIR, exist_ok=True)
 
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
@@ -57,7 +62,7 @@ def generate_industry_report(industry):
             end_index = report_text.find(section_titles[i + 1]) if i + 1 < len(section_titles) else len(report_text)
             section_data[title] = report_text[start_index + len(title):end_index].strip()
 
-    pdf_filename = f"{industry}_Industry_Report.pdf"
+    pdf_filename = os.path.join(GENERATED_DIR, f"{industry}_Industry_Report.pdf")
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=10)
 
@@ -123,9 +128,13 @@ def get_trends():
     primary_csv, related_csv = trends.generate_trends_csv(industry)
     
     return {
-        "primary_trends": primary_csv,
-        "related_trends": related_csv if related_csv else None
+        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
+        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     }
+
+@app.route('/download_trends/<filename>')
+def download_trends(filename):
+    return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
