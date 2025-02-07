@@ -4,8 +4,6 @@ import pandas as pd
 from pytrends.request import TrendReq
 import time
 import random
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 def get_industry_keywords(industry):
     """Fetch commonly searched keywords related to an industry from Wikipedia."""
@@ -40,41 +38,33 @@ def find_related_industry(industry):
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data with enhanced rate-limiting protection."""
     if not keywords:
-        print("No keywords provided to fetch Google Trends data.")
+        print("❌ No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
 
-    session = TrendReq(hl='en-US', tz=360)
-    
-    # Configure retry policy
-    retry = Retry(
-        total=5,
-        backoff_factor=1,
-        allowed_methods=["GET"],  # Updated from 'method_whitelist' to 'allowed_methods'
-        status_forcelist=[429, 500, 502, 503, 504]
-    )
+    print(f"🔍 Fetching Google Trends data for: {keywords}")
 
-    adapter = HTTPAdapter(max_retries=retry)
-    session.requests.mount("https://", adapter)
+    pytrends = TrendReq(hl='en-US', tz=360)
 
-    # Introduce a delay to prevent rate limiting
+    # Introduce a larger delay to prevent rate limiting
     time.sleep(random.uniform(5, 10))
 
     try:
-        session.build_payload(keywords, timeframe='today 5-y', geo='')
-        data = session.interest_over_time()
+        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
+        data = pytrends.interest_over_time()
 
         if data.empty:
-            print("Google Trends data is empty.")
-        
+            print("⚠️ Google Trends returned an empty dataset.")
+            return pd.DataFrame()
+
         if 'isPartial' in data.columns:
             data = data.drop(columns=['isPartial'])
 
-        print(f"Fetched Google Trends Data:\n{data.head()}")  # Debugging
+        print(f"✅ Fetched Google Trends Data:\n{data.head()}")
 
         return data
 
     except Exception as e:
-        print(f"Error fetching Google Trends data: {e}")
+        print(f"❌ Error fetching Google Trends data: {e}")
         return pd.DataFrame()
 
 def generate_trends_csv(industry):
@@ -91,10 +81,10 @@ def generate_trends_csv(industry):
 
     if primary_csv:
         primary_data.to_csv(primary_csv)
-        print(f"Primary Industry CSV Generated: {primary_csv}")
+        print(f"✅ Primary Industry CSV Generated: {primary_csv}")
 
     if related_csv:
         related_data.to_csv(related_csv)
-        print(f"Related Industry CSV Generated: {related_csv}")
+        print(f"✅ Related Industry CSV Generated: {related_csv}")
 
     return primary_csv, related_csv
