@@ -45,7 +45,7 @@ def find_related_industry(industry):
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data with enhanced rate-limiting protection."""
+    """Retrieve Google Trends data while handling API rate limits with exponential backoff."""
     if not keywords:
         print("❌ No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
@@ -77,12 +77,12 @@ def fetch_google_trends_data(keywords):
 
 def generate_trends_csv(industry):
     """Generate two CSV files for primary and related industry trends."""
-    primary_keywords, _ = get_industry_keywords(industry)  # Get primary industry keywords
+    primary_keywords, secondary_keywords = get_industry_keywords(industry)  # Get 5 primary & 5 secondary industry keywords
     related_industry = find_related_industry(industry)
-    _, related_keywords = get_industry_keywords(related_industry) if related_industry else ([], [])
+    related_primary_keywords, related_secondary_keywords = get_industry_keywords(related_industry) if related_industry else ([], [])
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
-    related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
+    related_data = fetch_google_trends_data(related_primary_keywords) if related_primary_keywords else pd.DataFrame()
 
     # Ensure the directory exists before saving files
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
