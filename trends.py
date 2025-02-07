@@ -2,6 +2,8 @@ import os
 import wikipediaapi
 import pandas as pd
 from pytrends.request import TrendReq
+import time
+import random
 
 def get_industry_keywords(industry):
     """Fetch commonly searched keywords related to an industry from Wikipedia."""
@@ -12,15 +14,12 @@ def get_industry_keywords(industry):
     
     if not page.exists():
         return []
-
+    
     content = page.summary[:2000]  # Limit text extraction to avoid large data processing
     words = content.lower().split()
     common_words = [word.strip('.,()') for word in words if len(word) > 3]
     keyword_counts = pd.Series(common_words).value_counts()
-    keywords = keyword_counts.index[:5].tolist()
-    
-    print(f"Primary Industry Keywords: {keywords}")  # Debugging
-    
+    keywords = keyword_counts.index[:3].tolist()  # Limit to 3 keywords to avoid API rate limits
     return keywords
 
 def find_related_industry(industry):
@@ -34,18 +33,19 @@ def find_related_industry(industry):
         return None
     
     links = list(page.links.keys())
-    
-    print(f"Related Industry: {links[0] if links else None}")  # Debugging
-    
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data for given keywords."""
+    """Retrieve Google Trends data for given keywords with rate-limiting protection."""
     if not keywords:
         print("No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
 
     pytrends = TrendReq(hl='en-US', tz=360)
+    
+    # Introduce a small delay to avoid hitting rate limits
+    time.sleep(random.uniform(2, 5))  # Wait 2-5 seconds before requesting
+
     pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
     data = pytrends.interest_over_time()
 
@@ -54,7 +54,7 @@ def fetch_google_trends_data(keywords):
     
     if 'isPartial' in data.columns:
         data = data.drop(columns=['isPartial'])
-
+    
     print(f"Fetched Google Trends Data:\n{data.head()}")  # Debugging
     
     return data
