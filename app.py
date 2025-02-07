@@ -21,7 +21,7 @@ def generate_industry_report(industry):
         return None
 
     content = page.summary[:4000]
-    prompt = f"Summarize the following industry report: {content}"
+    prompt = f"Provide a detailed industry report on {industry}, covering: Industry Overview, Market Size & Growth Trends, Key Competitors, Major Challenges & Opportunities, Latest Innovations/Disruptions, Market Segmentation, and Future Outlook."
 
     response = client.chat.completions.create(
         model="gpt-4",
@@ -29,6 +29,20 @@ def generate_industry_report(industry):
     )
 
     report_text = response.choices[0].message.content.strip()
+    sections = report_text.split("\n\n")
+    section_titles = [
+        "Industry Overview",
+        "Market Size & Growth Trends",
+        "Key Competitors",
+        "Major Challenges & Opportunities",
+        "Latest Innovations/Disruptions",
+        "Market Segmentation",
+        "Future Outlook"
+    ]
+
+    section_data = {}
+    for i, title in enumerate(section_titles):
+        section_data[title] = sections[i] if i < len(sections) else "No data available."
 
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
@@ -52,22 +66,13 @@ def generate_industry_report(industry):
     pdf.cell(200, 10, "Table of Contents", ln=True)
     pdf.ln(5)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 7, "1. Industry Overview\n2. Market Size & Growth Trends\n3. Key Competitors\n4. Major Challenges & Opportunities\n5. Latest Innovations/Disruptions\n6. Market Segmentation\n7. Future Outlook\n")
+    for i, title in enumerate(section_titles, start=1):
+        pdf.cell(200, 10, f"{i}. {title}", ln=True)
     pdf.ln(10)
     pdf.add_page()
 
     # Sections with improved text formatting
-    sections = [
-        ("Industry Overview", report_text[:800]),
-        ("Market Size & Growth Trends", report_text[800:1600]),
-        ("Key Competitors", report_text[1600:2400]),
-        ("Major Challenges & Opportunities", report_text[2400:3200]),
-        ("Latest Innovations/Disruptions", report_text[3200:4000]),
-        ("Market Segmentation", report_text[4000:4800]),
-        ("Future Outlook", report_text[4800:])
-    ]
-
-    for title, content in sections:
+    for title, content in section_data.items():
         pdf.set_font("Arial", "B", 14)
         pdf.cell(200, 10, title, ln=True)
         pdf.ln(2)
