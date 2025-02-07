@@ -19,7 +19,7 @@ def get_industry_keywords(industry):
     words = content.lower().split()
     common_words = [word.strip('.,()') for word in words if len(word) > 3]
     keyword_counts = pd.Series(common_words).value_counts()
-    keywords = keyword_counts.index[:3].tolist()  # Limit to 3 keywords to avoid API rate limits
+    keywords = keyword_counts.index[:5].tolist()  # Fetch top 5 keywords
     return keywords
 
 def find_related_industry(industry):
@@ -49,23 +49,19 @@ def fetch_google_trends_data(keywords):
     time.sleep(random.uniform(5, 10))
 
     try:
-        for keyword in keywords[:1]:  # Only request trends for ONE keyword at a time
-            pytrends.build_payload([keyword], timeframe='today 12-m', geo='')
+        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')  # Fetch data for 5 keywords
+        response = pytrends.interest_over_time()
+        
+        if response.empty:
+            print(f"⚠️ Google Trends request blocked (429 error). Retrying in 15 seconds...")
+            time.sleep(15)
+            return pd.DataFrame()
+        
+        if 'isPartial' in response.columns:
+            response = response.drop(columns=['isPartial'])
 
-            # Check if Google blocked the request
-            response = pytrends.interest_over_time()
-            if response.empty:
-                print(f"⚠️ Google Trends request blocked (429 error) for {keyword}. Retrying in 15 seconds...")
-                time.sleep(15)  # Wait longer before retrying
-                continue  # Try the next keyword
-            
-            if 'isPartial' in response.columns:
-                response = response.drop(columns=['isPartial'])
-
-            print(f"✅ Fetched Google Trends Data for {keyword}:\n{response.head()}")
-            return response  # Return the first successful response
-
-        return pd.DataFrame()  # Return empty dataframe if all fail
+        print(f"✅ Fetched Google Trends Data:\n{response.head()}")
+        return response
 
     except Exception as e:
         print(f"❌ Error fetching Google Trends data: {e}")
@@ -73,9 +69,9 @@ def fetch_google_trends_data(keywords):
 
 def generate_trends_csv(industry):
     """Generate two CSV files for primary and related industry trends."""
-    primary_keywords = get_industry_keywords(industry)
+    primary_keywords = get_industry_keywords(industry)[:5]  # Fetch top 5 keywords
     related_industry = find_related_industry(industry)
-    related_keywords = get_industry_keywords(related_industry) if related_industry else []
+    related_keywords = get_industry_keywords(related_industry)[:5] if related_industry else []
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
