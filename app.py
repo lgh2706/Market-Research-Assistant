@@ -15,6 +15,12 @@ client = openai.OpenAI(api_key=openai_api_key)
 # Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
+
+# Check if "generated_files" exists as a file and remove it
+if os.path.exists(GENERATED_DIR) and not os.path.isdir(GENERATED_DIR):
+    os.remove(GENERATED_DIR)  # Delete the file to replace it with a directory
+
+# Ensure the directory exists
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
 def generate_industry_report(industry):
