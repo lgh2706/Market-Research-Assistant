@@ -34,7 +34,7 @@ def generate_industry_report(industry):
         messages=[{"role": "user", "content": prompt}]
     )
 
-    report_text = response.choices[0].message.content.strip()
+        report_text = response.choices[0].message.content.strip().replace('**', '')
     
     # Extract sections using explicit markers
     section_titles = [
@@ -64,7 +64,7 @@ def generate_industry_report(industry):
     # Cover Page
     pdf.add_page()
     pdf.set_font("Arial", "B", 20)
-    pdf.cell(200, 20, f"{industry} Industry Report", ln=True, align="C")
+    pdf.cell(200, 20, f"{industry.title()} Industry Report", ln=True, align="C")
     pdf.ln(10)
     pdf.set_font("Arial", "I", 14)
     pdf.cell(200, 10, f"Generated on {datetime.now().strftime('%B %d, %Y')}", ln=True, align="C")
