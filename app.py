@@ -28,7 +28,7 @@ def generate_industry_report(industry):
     prompt = f"Summarize the following industry report: {content}"
     
     response = openai.ChatCompletion.create(
-    model="gpt-4",
+    model="gpt-40",
     messages=[{"role": "user", "content": prompt}]
     )
     report_text = response.choices[0].message.content
