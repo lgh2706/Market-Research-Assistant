@@ -24,13 +24,15 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = f"Summarize the following industry report: {content}"
     
-                client = openai.OpenAI()
+     client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
     response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}]
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
     )
     
-        report_text = response.choices[0].message["content"]
+    report_text = response.choices[0].message.content
+
     
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
