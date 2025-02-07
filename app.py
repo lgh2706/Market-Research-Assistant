@@ -21,7 +21,13 @@ def generate_industry_report(industry):
         return None
 
     content = page.summary[:4000]
-    prompt = f"Provide a detailed industry report on {industry}, covering: Industry Overview, Market Size & Growth Trends, Key Competitors, Major Challenges & Opportunities, Latest Innovations/Disruptions, Market Segmentation, and Future Outlook."
+    prompt = (
+        f"Provide a detailed industry report on {industry}. "
+        "The report should be divided into these sections: "
+        "Industry Overview, Market Size & Growth Trends, Key Competitors, "
+        "Major Challenges & Opportunities, Latest Innovations/Disruptions, "
+        "Market Segmentation, and Future Outlook. Clearly label each section."
+    )
 
     response = client.chat.completions.create(
         model="gpt-4",
@@ -29,7 +35,8 @@ def generate_industry_report(industry):
     )
 
     report_text = response.choices[0].message.content.strip()
-    sections = report_text.split("\n\n")
+    
+    # Extract sections using explicit markers
     section_titles = [
         "Industry Overview",
         "Market Size & Growth Trends",
@@ -39,10 +46,16 @@ def generate_industry_report(industry):
         "Market Segmentation",
         "Future Outlook"
     ]
-
+    
     section_data = {}
+    for title in section_titles:
+        section_data[title] = "No data available."
+    
     for i, title in enumerate(section_titles):
-        section_data[title] = sections[i] if i < len(sections) else "No data available."
+        start_index = report_text.find(title)
+        if start_index != -1:
+            end_index = report_text.find(section_titles[i + 1]) if i + 1 < len(section_titles) else len(report_text)
+            section_data[title] = report_text[start_index + len(title):end_index].strip()
 
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
