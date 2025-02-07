@@ -45,24 +45,24 @@ def fetch_google_trends_data(keywords):
 
     pytrends = TrendReq(hl='en-US', tz=360)
 
-    # Introduce a larger delay to prevent rate limiting
-    time.sleep(random.uniform(10, 15))  # Increased delay to 10-15s
+    # Introduce a moderate delay to prevent rate limiting
+    time.sleep(random.uniform(5, 10))
 
     try:
         for keyword in keywords[:1]:  # Only request trends for ONE keyword at a time
-            pytrends.build_payload([keyword], timeframe='today 5-y', geo='')
+            pytrends.build_payload([keyword], timeframe='today 12-m', geo='')
 
             # Check if Google blocked the request
             response = pytrends.interest_over_time()
             if response.empty:
-                print(f"⚠️ Google Trends request blocked (429 error) for {keyword}. Stopping further requests.")
-                return pd.DataFrame()  # Stop further requests if Google blocks us
+                print(f"⚠️ Google Trends request blocked (429 error) for {keyword}. Retrying in 15 seconds...")
+                time.sleep(15)  # Wait longer before retrying
+                continue  # Try the next keyword
             
             if 'isPartial' in response.columns:
                 response = response.drop(columns=['isPartial'])
 
             print(f"✅ Fetched Google Trends Data for {keyword}:\n{response.head()}")
-
             return response  # Return the first successful response
 
         return pd.DataFrame()  # Return empty dataframe if all fail
@@ -81,10 +81,12 @@ def generate_trends_csv(industry):
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
 
     # Ensure the directory exists before saving files
-    os.makedirs("/tmp", exist_ok=True)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
+    os.makedirs(GENERATED_DIR, exist_ok=True)
 
-    primary_csv = f"/tmp/{industry}_Google_Trends.csv" if not primary_data.empty else None
-    related_csv = f"/tmp/{related_industry}_Google_Trends.csv" if related_industry and not related_data.empty else None
+    primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv") if not primary_data.empty else None
+    related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv") if related_industry and not related_data.empty else None
 
     if primary_csv:
         primary_data.to_csv(primary_csv)
