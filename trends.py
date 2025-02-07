@@ -4,9 +4,11 @@ import pandas as pd
 from pytrends.request import TrendReq
 import time
 import random
+import re
+import collections
 
 def get_industry_keywords(industry):
-    """Fetch commonly searched keywords related to an industry from Wikipedia."""
+    """Fetch commonly searched keywords related to an industry from Wikipedia with better filtering."""
     wiki_wiki = wikipediaapi.Wikipedia(
         user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
     )
@@ -15,11 +17,14 @@ def get_industry_keywords(industry):
     if not page.exists():
         return []
     
-    content = page.summary[:2000]  # Limit text extraction to avoid large data processing
-    words = content.lower().split()
-    common_words = [word.strip('.,()') for word in words if len(word) > 3]
-    keyword_counts = pd.Series(common_words).value_counts()
-    keywords = keyword_counts.index[:5].tolist()  # Fetch top 5 keywords
+    content = page.summary[:2000]  # Limit text extraction
+    words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())  # Extract words of 4+ letters
+    common_words = [word for word in words if word not in ["such", "from", "that", "with", "other", "used", "like", "which"]]  # Remove filler words
+    keyword_counts = collections.Counter(common_words)
+    
+    keywords = [word for word, count in keyword_counts.most_common(5)]  # Get top 5 keywords
+    print(f"🔍 Extracted Keywords for {industry}: {keywords}")
+    
     return keywords
 
 def find_related_industry(industry):
@@ -36,7 +41,7 @@ def find_related_industry(industry):
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data with enhanced rate-limiting protection."""
+    """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
         print("❌ No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
@@ -53,9 +58,8 @@ def fetch_google_trends_data(keywords):
         response = pytrends.interest_over_time()
         
         if response.empty:
-            print(f"⚠️ Google Trends request blocked (429 error). Retrying in 15 seconds...")
-            time.sleep(15)
-            return pd.DataFrame()
+            print(f"⚠️ Google Trends request blocked (429 error). Skipping this request.")
+            return pd.DataFrame()  # Instead of retrying, move to next industry
         
         if 'isPartial' in response.columns:
             response = response.drop(columns=['isPartial'])
