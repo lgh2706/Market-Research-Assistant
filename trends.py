@@ -89,11 +89,11 @@ def generate_trends_csv(industry):
     related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv") if related_industry and not related_data.empty else None
 
     if primary_csv:
-        primary_data.to_csv(primary_csv)
+        primary_data.to_csv(primary_csv, index=False)
         print(f"✅ Primary Industry CSV Generated: {primary_csv}")
 
     if related_csv:
-        related_data.to_csv(related_csv)
+        related_data.to_csv(related_csv, index=False)
         print(f"✅ Related Industry CSV Generated: {related_csv}")
 
     return primary_csv, related_csv
