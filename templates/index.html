@@ -4,13 +4,124 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Market Research Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
+        }
+        input {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+            border-radius: 5px;
+            color: white;
+        }
+        .btn-report {
+            background-color: #007bff;
+        }
+        .btn-trends {
+            background-color: #28a745;
+        }
+        .btn-report:hover {
+            background-color: #0056b3;
+        }
+        .btn-trends:hover {
+            background-color: #218838;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            display: inline-block;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Market Research Assistant</h1>
-    <form action="/generate_report" method="post">
-        <label for="industry">Enter Industry Name:</label>
-        <input type="text" id="industry" name="industry" required>
-        <button type="submit">Generate Report</button>
+    <h1>Market Research Assistant</h1>
+
+    <!-- Industry Selection Form -->
+    <form id="industryForm">
+        <label for="industry">Enter Industry Name:</label><br>
+        <input type="text" id="industry" name="industry" required><br>
+        
+        <!-- Buttons for Report and Google Trends -->
+        <button type="button" class="btn-report" onclick="generateReport()">Generate Report</button>
+        <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
     </form>
+
+    <!-- Results Section -->
+    <div id="result"></div>
+
+    <script>
+        function generateReport() {
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            
+            fetch("/generate_report", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `industry=${industry}`
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                let url = window.URL.createObjectURL(blob);
+                let a = document.createElement("a");
+                a.href = url;
+                a.download = `${industry}_Industry_Report.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            })
+            .catch(error => console.error("Error generating report:", error));
+        }
+
+        function getTrends() {
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            
+            fetch("/get_trends", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `industry=${industry}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = `
+                    <h2>Google Trends Data Available</h2>
+                    <p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>
+                    ${data.related_trends ? `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>` : ""}
+                `;
+            })
+            .catch(error => console.error("Error fetching Google Trends:", error));
+        }
+    </script>
 </body>
 </html>
