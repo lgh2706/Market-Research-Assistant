@@ -1,27 +1,67 @@
-from flask import Flask, render_template, request, send_file, send_from_directory, jsonify
+from flask import Flask, render_template, request, send_file
+import openai
+import wikipediaapi
 import os
-import trends
-from fpdf import FPDF
 from datetime import datetime
+from fpdf import FPDF
 
-app = Flask(__name__, template_folder="templates")  # Ensure templates are correctly loaded
+app = Flask(__name__)
 
-# Ensure writable directory exists for storing generated files
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
+# OpenAI API Key from environment variable
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=openai_api_key)
 
-# Check if "generated_files" exists as a file and remove it
-if os.path.exists(GENERATED_DIR) and not os.path.isdir(GENERATED_DIR):
-    os.remove(GENERATED_DIR)  # Delete the file to replace it with a directory
+def generate_industry_report(industry):
+    wiki_wiki = wikipediaapi.Wikipedia(
+        user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
+    )
+    page = wiki_wiki.page(industry)
+    
+    wiki_url = page.fullurl if page.exists() else None
 
-# Ensure the directory exists
-os.makedirs(GENERATED_DIR, exist_ok=True)
+    if not page.exists():
+        return None
 
-def generate_report(industry):
-    """Generate a formatted industry report in PDF format."""
-    pdf_filename = os.path.join(GENERATED_DIR, f"{industry}_Industry_Report.pdf")
+    content = page.summary[:2000]  # Limit summary size to reduce memory usage
+    prompt = (
+        f"Provide a concise and structured industry report on {industry}. "
+        "Ensure the response is limited to essential details, and format it into the following sections: "
+        "Industry Overview, Market Size & Growth Trends, Key Competitors, "
+        "Major Challenges & Opportunities, Latest Innovations/Disruptions, "
+        "Market Segmentation, and Future Outlook. Keep responses compact and structured."
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    report_text = response.choices[0].message.content.strip().replace("**", "").replace(":", "")
+    
+    # Extract sections using explicit markers
+    section_titles = [
+        "Industry Overview",
+        "Market Size & Growth Trends",
+        "Key Competitors",
+        "Major Challenges & Opportunities",
+        "Latest Innovations/Disruptions",
+        "Market Segmentation",
+        "Future Outlook"
+    ]
+    
+    section_data = {title: "No data available." for title in section_titles}
+    
+    for i, title in enumerate(section_titles):
+        start_index = report_text.find(title)
+        if start_index != -1:
+            end_index = report_text.find(section_titles[i + 1]) if i + 1 < len(section_titles) else len(report_text)
+            section_data[title] = report_text[start_index + len(title):end_index].strip()
+
+    pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.set_auto_page_break(auto=True, margin=10)  # Reduce margin to optimize space
+
+    # Cover Page
     pdf.add_page()
     pdf.set_font("Arial", "B", 18)
     pdf.cell(200, 15, f"{industry.title()} Industry Report", ln=True, align="C")
@@ -34,69 +74,53 @@ def generate_report(industry):
     pdf.cell(200, 10, "--- End of Cover Page ---", ln=True, align="C")
     pdf.add_page()
 
+    # Table of Contents
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "Industry Overview", ln=True)
+    pdf.cell(200, 10, "Table of Contents", ln=True)
     pdf.ln(5)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, f"This report provides insights into the {industry} industry, including market trends, key players, and emerging opportunities.")
+    for i, title in enumerate(section_titles, start=1):
+        pdf.cell(200, 8, f"{i}. {title}", ln=True)
     pdf.ln(10)
+    pdf.add_page()
 
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "Market Trends", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, "- Growth of the industry in recent years.\n- Key factors driving market expansion.\n- Emerging challenges and potential risks.")
-    pdf.ln(10)
+    # Sections with optimized text processing
+    for title, content in section_data.items():
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 8, title, ln=True)
+        pdf.ln(2)
+        pdf.set_font("Arial", size=10)
+        pdf.multi_cell(0, 6, content[:2000].encode("latin-1", "replace").decode("latin-1"))  # Limit text per section
+        pdf.ln(4)
+    
+    # Add Wikipedia source to the end of the report
+    if wiki_url:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, "Source & References", ln=True)
+        pdf.ln(5)
+        pdf.set_font("Arial", size=10)
+        pdf.multi_cell(0, 6, f"This report is based on publicly available data from Wikipedia.\nWikipedia Source: {wiki_url}")
+        pdf.ln(5)
 
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "Key Players", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, "- Leading companies in the industry.\n- Market share analysis.\n- Recent mergers, acquisitions, and innovations.")
-    pdf.ln(10)
-
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "Future Outlook", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, "- Expected industry growth over the next 5-10 years.\n- Impact of new regulations and policies.\n- Technological advancements and their influence.")
-    pdf.ln(10)
-
+    # Footer with page numbers
     pdf.set_y(-15)
     pdf.set_font("Arial", size=8)
     pdf.cell(0, 10, f"Page {pdf.page_no()}", align="C")
 
     pdf.output(pdf_filename)
+
     return pdf_filename
 
-@app.route("/")
+@app.route('/')
 def home():
-    return render_template("index.html")
+    return render_template('index.html')
 
 @app.route('/generate_report', methods=['POST'])
-def generate_report_route():
+def generate_report():
     industry = request.form['industry']
-    pdf_file = generate_report(industry)
+    pdf_file = generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
-@app.route('/get_trends', methods=['POST'])
-def get_trends():
-    industry = request.form['industry']
-    primary_keywords = trends.get_industry_keywords(industry)
-    primary_csv = trends.generate_trends_csv(industry)
-
-    return jsonify({
-        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None
-    })
-
-@app.route('/download_trends/<filename>')
-def download_trends(filename):
-    file_path = os.path.join(GENERATED_DIR, filename)
-    if os.path.exists(file_path):
-        return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
-    else:
-        print(f"❌ File Not Found: {filename}")
-        return "File Not Found", 404
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)  # Ensure Flask runs correctly
+if __name__ == '__main__':
+    app.run(debug=True)
