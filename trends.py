@@ -8,7 +8,7 @@ import re
 import collections
 
 def get_industry_keywords(industry):
-    """Fetch commonly searched keywords related to an industry from Wikipedia, ensuring uniqueness."""
+    """Fetch commonly searched keywords related to an industry from Wikipedia, ensuring relevance."""
     wiki_wiki = wikipediaapi.Wikipedia(
         user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
     )
@@ -19,16 +19,24 @@ def get_industry_keywords(industry):
     
     content = page.summary[:2000]  # Limit text extraction
     words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())  # Extract words of 4+ letters
-    common_words = [word for word in words if word not in ["such", "from", "that", "with", "other", "used", "like", "which"]]
-    keyword_counts = collections.Counter(common_words)
-    
-    all_keywords = [word for word, count in keyword_counts.most_common(10)]  # Select top 10 words
+
+    # Remove common stopwords and generic words
+    stop_words = ["such", "from", "that", "with", "other", "used", "like", "which", "these", 
+                  "this", "also", "have", "been", "known", "amounts", "example", "including", 
+                  "system", "technology", "industry", "products", "vehicles", "powered", "various"]
+
+    filtered_words = [word for word in words if word not in stop_words]
+    keyword_counts = collections.Counter(filtered_words)
+
+    # Select industry-relevant words by frequency
+    all_keywords = [word for word, count in keyword_counts.most_common(15)]  # Select top 15 words
+
     primary_keywords = all_keywords[:5]  # First 5 for primary industry
     secondary_keywords = [word for word in all_keywords[5:] if word not in primary_keywords][:5]  # Ensure unique secondary keywords
 
     print(f"✅ Extracted Primary Keywords for {industry}: {primary_keywords}")
     print(f"✅ Extracted Secondary Keywords for {industry}: {secondary_keywords}")
-    
+
     return primary_keywords, secondary_keywords
 
 def find_related_industry(industry):
