@@ -8,24 +8,28 @@ import re
 import collections
 
 def get_industry_keywords(industry):
-    """Fetch commonly searched keywords related to an industry from Wikipedia with better filtering."""
+    """Fetch commonly searched keywords related to an industry from Wikipedia, ensuring uniqueness."""
     wiki_wiki = wikipediaapi.Wikipedia(
         user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
     )
     page = wiki_wiki.page(industry)
     
     if not page.exists():
-        return []
+        return [], []
     
     content = page.summary[:2000]  # Limit text extraction
     words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())  # Extract words of 4+ letters
-    common_words = [word for word in words if word not in ["such", "from", "that", "with", "other", "used", "like", "which"]]  # Remove filler words
+    common_words = [word for word in words if word not in ["such", "from", "that", "with", "other", "used", "like", "which"]]
     keyword_counts = collections.Counter(common_words)
     
-    keywords = [word for word, count in keyword_counts.most_common(5)]  # Get top 5 keywords
-    print(f"🔍 Extracted Keywords for {industry}: {keywords}")
+    all_keywords = [word for word, count in keyword_counts.most_common(10)]  # Select top 10 words
+    primary_keywords = all_keywords[:5]  # First 5 for primary industry
+    secondary_keywords = [word for word in all_keywords[5:] if word not in primary_keywords][:5]  # Ensure unique secondary keywords
+
+    print(f"✅ Extracted Primary Keywords for {industry}: {primary_keywords}")
+    print(f"✅ Extracted Secondary Keywords for {industry}: {secondary_keywords}")
     
-    return keywords
+    return primary_keywords, secondary_keywords
 
 def find_related_industry(industry):
     """Find a related industry based on Wikipedia links."""
@@ -41,7 +45,7 @@ def find_related_industry(industry):
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits."""
+    """Retrieve Google Trends data with enhanced rate-limiting protection."""
     if not keywords:
         print("❌ No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
@@ -59,7 +63,7 @@ def fetch_google_trends_data(keywords):
         
         if response.empty:
             print(f"⚠️ Google Trends request blocked (429 error). Skipping this request.")
-            return pd.DataFrame()  # Instead of retrying, move to next industry
+            return pd.DataFrame()
         
         if 'isPartial' in response.columns:
             response = response.drop(columns=['isPartial'])
@@ -73,9 +77,9 @@ def fetch_google_trends_data(keywords):
 
 def generate_trends_csv(industry):
     """Generate two CSV files for primary and related industry trends."""
-    primary_keywords = get_industry_keywords(industry)[:5]  # Fetch top 5 keywords
+    primary_keywords, _ = get_industry_keywords(industry)  # Get primary industry keywords
     related_industry = find_related_industry(industry)
-    related_keywords = get_industry_keywords(related_industry)[:5] if related_industry else []
+    _, related_keywords = get_industry_keywords(related_industry) if related_industry else ([], [])
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
     related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
