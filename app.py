@@ -12,7 +12,7 @@ import os
 app = Flask(__name__)
 
 # OpenAI API Key (Replace with your own key)
-openai.api_key = "your_openai_api_key"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
@@ -24,61 +24,57 @@ def generate_industry_report(industry):
     if not page.exists():
         return None
     
+    wikipedia_url = page.fullurl
     content = page.summary[:4000]
-    prompt = f"Summarize the following industry report: {content}"
     
-    response = openai.ChatCompletion.create(
-    model="gpt-40",
-    messages=[{"role": "user", "content": prompt}]
+    prompt = f"""
+    You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
+    The report must include:
+    1️⃣ **Industry Overview** - History, purpose, and market presence.
+    2️⃣ **Market Size & Growth Trends** - Revenue, CAGR, and key statistics.
+    3️⃣ **Key Competitors** - Top 5 companies with brief descriptions and market share.
+    4️⃣ **Major Challenges & Opportunities** - Regulatory risks, economic impacts, and new investments.
+    5️⃣ **Latest Innovations/Disruptions** - AI, sustainability, emerging technology trends.
+    6️⃣ **Market Segmentation** - Breakdown by region, demographics, or product type.
+    7️⃣ **Future Outlook** - Predictions and trends for the next 5-10 years.
+    
+    Ensure that all sections are well-developed with bullet points and key insights.
+    **Source:** {wikipedia_url}
+    """
+    
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
     )
+    
     report_text = response.choices[0].message.content
-
     
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Cover Page
     pdf.add_page()
-    pdf.set_font("Arial", "B", 20)
-    pdf.cell(200, 20, f"{industry} Industry Report", ln=True, align="C")
+    pdf.set_font("Arial", style='B', size=16)
+    pdf.cell(200, 10, f"{industry} Industry Report", ln=True, align='C')
     pdf.ln(10)
-    pdf.set_font("Arial", "I", 14)
-    pdf.cell(200, 10, f"Generated on {datetime.now().strftime('%B %d, %Y')}", ln=True, align="C")
-    pdf.ln(30)
-    pdf.cell(200, 10, "Prepared by AI Market Research Assistant", ln=True, align="C")
-    pdf.ln(20)
-    pdf.cell(200, 10, "--- End of Cover Page ---", ln=True, align="C")
-    pdf.add_page()
     
-    # Table of Contents
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(200, 10, "Table of Contents", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 7, "1. Executive Summary\n2. Market Trends\n3. Key Players\n4. Future Outlook\n")
-    pdf.ln(10)
-    pdf.add_page()
+    pdf.set_font("Arial", style='B', size=14)
+    sections = ["Industry Overview", "Market Size & Growth Trends", "Key Competitors", 
+                "Major Challenges & Opportunities", "Latest Innovations/Disruptions", 
+                "Market Segmentation", "Future Outlook"]
     
-    # Sections
-    sections = [
-        ("Executive Summary", report_text[:800]),
-        ("Market Trends", report_text[800:1600]),
-        ("Key Players", report_text[1600:2400]),
-        ("Future Outlook", report_text[2400:]),
-    ]
-    
-    for title, content in sections:
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(200, 10, title, ln=True)
+    content_split = report_text.split('1️⃣')[1:]
+    for index, section in enumerate(sections):
+        pdf.set_font("Arial", style='B', size=14)
+        pdf.cell(0, 10, section, ln=True)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 7, content)
+        if index < len(content_split):
+            pdf.multi_cell(0, 8, content_split[index].split(f'{index + 2}️⃣')[0])
         pdf.ln(5)
     
-    # Footer with page numbers
-    pdf.set_y(-15)
-    pdf.set_font("Arial", size=8)
-    pdf.cell(0, 10, f"Page {pdf.page_no()}", align="C")
+    pdf.set_font("Arial", style='I', size=10)
+    pdf.multi_cell(0, 8, f"**Source:** {wikipedia_url}")
     
     pdf.output(pdf_filename)
     
@@ -95,4 +91,4 @@ def generate_report():
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=10000, debug=True)
