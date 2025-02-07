@@ -18,7 +18,7 @@ if os.path.exists(GENERATED_DIR) and not os.path.isdir(GENERATED_DIR):
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
 def generate_report(industry):
-    """Generate an industry report in PDF format."""
+    """Generate a formatted industry report in PDF format."""
     pdf_filename = os.path.join(GENERATED_DIR, f"{industry}_Industry_Report.pdf")
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=10)
@@ -38,8 +38,33 @@ def generate_report(industry):
     pdf.cell(200, 10, "Industry Overview", ln=True)
     pdf.ln(5)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, f"This report provides insights into the {industry} industry, its trends, and key data points.")
+    pdf.multi_cell(0, 6, f"This report provides insights into the {industry} industry, including market trends, key players, and emerging opportunities.")
     pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(200, 10, "Market Trends", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 6, "- Growth of the industry in recent years.\n- Key factors driving market expansion.\n- Emerging challenges and potential risks.")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(200, 10, "Key Players", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 6, "- Leading companies in the industry.\n- Market share analysis.\n- Recent mergers, acquisitions, and innovations.")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(200, 10, "Future Outlook", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 6, "- Expected industry growth over the next 5-10 years.\n- Impact of new regulations and policies.\n- Technological advancements and their influence.")
+    pdf.ln(10)
+
+    pdf.set_y(-15)
+    pdf.set_font("Arial", size=8)
+    pdf.cell(0, 10, f"Page {pdf.page_no()}", align="C")
 
     pdf.output(pdf_filename)
     return pdf_filename
