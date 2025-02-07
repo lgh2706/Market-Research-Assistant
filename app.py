@@ -34,7 +34,7 @@ def generate_industry_report(industry):
         messages=[{"role": "user", "content": prompt}]
     )
 
-        report_text = response.choices[0].message.content.strip().replace('**', '')
+    report_text = response.choices[0].message.content.strip().replace("**", "")
     
     # Extract sections using explicit markers
     section_titles = [
@@ -47,9 +47,7 @@ def generate_industry_report(industry):
         "Future Outlook"
     ]
     
-    section_data = {}
-    for title in section_titles:
-        section_data[title] = "No data available."
+    section_data = {title: "No data available." for title in section_titles}
     
     for i, title in enumerate(section_titles):
         start_index = report_text.find(title)
