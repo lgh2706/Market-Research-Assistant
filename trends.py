@@ -60,8 +60,7 @@ def fetch_google_trends_data(keywords):
             if 'isPartial' in data.columns:
                 data = data.drop(columns=['isPartial'])
 
-            print(f"✅ Fetched Google Trends Data for {keyword}:
-{data.head()}")
+            print(f"✅ Fetched Google Trends Data for {keyword}:\n{data.head()}")
 
             return data  # Return the first successful response
 
