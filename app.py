@@ -17,9 +17,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
         language="en",
-        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+        user_agent="IndustryReportBot/1.0 (contact: miru.gheorghe@gmail.com)"
     )
-
     page = wiki_wiki.page(industry)
     
     if not page.exists():
@@ -29,62 +28,42 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     
     prompt = f"""
-You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
-
-### **Industry Overview**
-1️⃣ **History** – Provide a **timeline** of key developments in this industry.
-2️⃣ **Purpose** – Explain the **core goals** and objectives of the industry.
-3️⃣ **Market Presence** – Discuss **leading companies** and **global market coverage**.
-
-### **Market Size & Growth Trends**
-✅ Provide **global market value ($) and CAGR (%)** for this industry.
-✅ List the **top 3 regions contributing to revenue**.
-✅ Mention **key drivers of industry growth**.
-
-### **Key Competitors**
-✅ Provide the **top 5 companies** in this industry with **market share % and revenues**.
-✅ Summarize their **competitive advantages**.
-
-### **Major Challenges & Opportunities**
-✅ List **3 major challenges** (e.g., regulations, cost, competition).
-✅ List **3 key opportunities** (e.g., AI, innovation, emerging markets).
-
-### **Latest Innovations/Disruptions**
-✅ Describe **how technology is changing this industry**.
-✅ Give **examples of AI, blockchain, or robotics innovations**.
-
-### **Market Segmentation**
-✅ Explain **how this industry is divided (by product, region, demographics, etc.)**.
-
-### **Future Outlook**
-✅ Predict **what the industry will look like in the next 5-10 years**.
-✅ Highlight **emerging trends**.
-
-**Source:** {wikipedia_url}
-"""
-
-    # ✅ Move the OpenAI API call inside the function
+    You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
+    The report must include:
+    1️⃣ **Industry Overview** - History, purpose, and market presence.
+    2️⃣ **Market Size & Growth Trends** - Revenue, CAGR, and key statistics.
+    3️⃣ **Key Competitors** - Top 5 companies with brief descriptions and market share.
+    4️⃣ **Major Challenges & Opportunities** - Regulatory risks, economic impacts, and new investments.
+    5️⃣ **Latest Innovations/Disruptions** - AI, sustainability, emerging technology trends.
+    6️⃣ **Market Segmentation** - Breakdown by region, demographics, or product type.
+    7️⃣ **Future Outlook** - Predictions and trends for the next 5-10 years.
+    
+    Ensure that all sections are well-developed with bullet points and key insights.
+    **Source:** {wikipedia_url}
+    """
+    
     client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
+    
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}]
     )
-
+    
     report_text = response.choices[0].message.content
-
+    
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", style='B', size=16)
     pdf.cell(200, 10, f"{industry} Industry Report", ln=True, align='C')
     pdf.ln(10)
-
+    
     pdf.set_font("Arial", style='B', size=14)
     sections = ["Industry Overview", "Market Size & Growth Trends", "Key Competitors", 
                 "Major Challenges & Opportunities", "Latest Innovations/Disruptions", 
                 "Market Segmentation", "Future Outlook"]
-
+    
     content_split = report_text.split('1️⃣')[1:]
     for index, section in enumerate(sections):
         pdf.set_font("Arial", style='B', size=14)
@@ -93,12 +72,12 @@ You are an AI market analyst. Generate a **detailed industry report** for the in
         if index < len(content_split):
             pdf.multi_cell(0, 8, content_split[index].split(f'{index + 2}️⃣')[0])
         pdf.ln(5)
-
+    
     pdf.set_font("Arial", style='I', size=10)
     pdf.multi_cell(0, 8, f"**Source:** {wikipedia_url}")
-
+    
     pdf.output(pdf_filename)
-
+    
     return pdf_filename
 
 @app.route('/')
