@@ -46,22 +46,26 @@ def fetch_google_trends_data(keywords):
     pytrends = TrendReq(hl='en-US', tz=360)
 
     # Introduce a larger delay to prevent rate limiting
-    time.sleep(random.uniform(5, 10))
+    time.sleep(random.uniform(10, 15))  # Increased delay to 10-15s
 
     try:
-        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
-        data = pytrends.interest_over_time()
+        for keyword in keywords[:1]:  # Only request trends for ONE keyword at a time
+            pytrends.build_payload([keyword], timeframe='today 5-y', geo='')
+            data = pytrends.interest_over_time()
 
-        if data.empty:
-            print("⚠️ Google Trends returned an empty dataset.")
-            return pd.DataFrame()
+            if data.empty:
+                print(f"⚠️ Google Trends returned an empty dataset for: {keyword}.")
+                continue
 
-        if 'isPartial' in data.columns:
-            data = data.drop(columns=['isPartial'])
+            if 'isPartial' in data.columns:
+                data = data.drop(columns=['isPartial'])
 
-        print(f"✅ Fetched Google Trends Data:\n{data.head()}")
+            print(f"✅ Fetched Google Trends Data for {keyword}:
+{data.head()}")
 
-        return data
+            return data  # Return the first successful response
+
+        return pd.DataFrame()  # Return empty dataframe if all fail
 
     except Exception as e:
         print(f"❌ Error fetching Google Trends data: {e}")
