@@ -22,23 +22,26 @@ def home():
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
-    primary_keywords, secondary_keywords = trends.get_industry_keywords(industry)
-    related_industry = trends.find_related_industry(industry)
-    related_primary_keywords, related_secondary_keywords = trends.get_industry_keywords(related_industry) if related_industry else ([], [])
+    primary_keywords, related_industry, related_keywords = trends.get_industry_keywords(industry)
     primary_csv, related_csv = trends.generate_trends_csv(industry)
 
     return jsonify({
         "primary_industry": industry,
         "primary_keywords": primary_keywords,
         "related_industry": related_industry,
-        "related_keywords": related_primary_keywords,
+        "related_keywords": related_keywords,
         "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     })
 
 @app.route('/download_trends/<filename>')
 def download_trends(filename):
-    return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
+    file_path = os.path.join(GENERATED_DIR, filename)
+    if os.path.exists(file_path):
+        return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
+    else:
+        print(f"❌ File Not Found: {filename}")
+        return "File Not Found", 404
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)  # Ensure Flask runs correctly
