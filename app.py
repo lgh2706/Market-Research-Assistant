@@ -4,7 +4,7 @@ import wikipediaapi
 import os
 from datetime import datetime
 from fpdf import FPDF
-from trends import generate_trends_csv
+import trends  # Import the trends module
 
 app = Flask(__name__)
 
@@ -126,11 +126,11 @@ def generate_report():
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
-    primary_csv, related_csv = generate_trends_csv(industry)
+    primary_csv, related_csv = trends.generate_trends_csv(industry)
     
     return {
         "primary_trends": primary_csv,
-        "related_trends": related_csv
+        "related_trends": related_csv if related_csv else None
     }
 
 if __name__ == '__main__':
