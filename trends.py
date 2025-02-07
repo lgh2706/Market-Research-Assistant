@@ -36,28 +36,33 @@ def find_related_industry(industry):
     return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data for given keywords with rate-limiting protection."""
+    """Retrieve Google Trends data with enhanced rate-limiting protection."""
     if not keywords:
         print("No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
 
-    pytrends = TrendReq(hl='en-US', tz=360)
-    
-    # Introduce a small delay to avoid hitting rate limits
-    time.sleep(random.uniform(2, 5))  # Wait 2-5 seconds before requesting
+    pytrends = TrendReq(hl='en-US', tz=360, retries=5, backoff_factor=0.5)  # Add retries and backoff
 
-    pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
-    data = pytrends.interest_over_time()
+    # Introduce a larger delay to avoid hitting rate limits
+    time.sleep(random.uniform(5, 10))  # Wait 5-10 seconds before requesting
 
-    if data.empty:
-        print("Google Trends data is empty.")
-    
-    if 'isPartial' in data.columns:
-        data = data.drop(columns=['isPartial'])
-    
-    print(f"Fetched Google Trends Data:\n{data.head()}")  # Debugging
-    
-    return data
+    try:
+        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
+        data = pytrends.interest_over_time()
+
+        if data.empty:
+            print("Google Trends data is empty.")
+        
+        if 'isPartial' in data.columns:
+            data = data.drop(columns=['isPartial'])
+
+        print(f"Fetched Google Trends Data:\n{data.head()}")  # Debugging
+
+        return data
+
+    except Exception as e:
+        print(f"Error fetching Google Trends data: {e}")
+        return pd.DataFrame()
 
 def generate_trends_csv(industry):
     """Generate two CSV files for primary and related industry trends."""
@@ -73,10 +78,10 @@ def generate_trends_csv(industry):
 
     if primary_csv:
         primary_data.to_csv(primary_csv)
-        print(f"Primary Industry CSV Generated: {primary_csv}")  # Debugging
+        print(f"Primary Industry CSV Generated: {primary_csv}")
 
     if related_csv:
         related_data.to_csv(related_csv)
-        print(f"Related Industry CSV Generated: {related_csv}")  # Debugging
+        print(f"Related Industry CSV Generated: {related_csv}")
 
     return primary_csv, related_csv
