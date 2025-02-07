@@ -4,6 +4,8 @@ import pandas as pd
 from pytrends.request import TrendReq
 import time
 import random
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 def get_industry_keywords(industry):
     """Fetch commonly searched keywords related to an industry from Wikipedia."""
@@ -41,14 +43,25 @@ def fetch_google_trends_data(keywords):
         print("No keywords provided to fetch Google Trends data.")
         return pd.DataFrame()
 
-    pytrends = TrendReq(hl='en-US', tz=360, retries=5, backoff_factor=0.5)  # Add retries and backoff
+    session = TrendReq(hl='en-US', tz=360)
+    
+    # Configure retry policy
+    retry = Retry(
+        total=5,
+        backoff_factor=1,
+        allowed_methods=["GET"],  # Updated from 'method_whitelist' to 'allowed_methods'
+        status_forcelist=[429, 500, 502, 503, 504]
+    )
 
-    # Introduce a larger delay to avoid hitting rate limits
-    time.sleep(random.uniform(5, 10))  # Wait 5-10 seconds before requesting
+    adapter = HTTPAdapter(max_retries=retry)
+    session.requests.mount("https://", adapter)
+
+    # Introduce a delay to prevent rate limiting
+    time.sleep(random.uniform(5, 10))
 
     try:
-        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
-        data = pytrends.interest_over_time()
+        session.build_payload(keywords, timeframe='today 5-y', geo='')
+        data = session.interest_over_time()
 
         if data.empty:
             print("Google Trends data is empty.")
