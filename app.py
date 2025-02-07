@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, send_file
 import openai
 import wikipediaapi
@@ -17,9 +16,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def generate_industry_report(industry):
     wiki_wiki = wikipediaapi.Wikipedia(
-    language="en",
-    user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
-)
+        language="en",
+        user_agent="MarketResearchAssistant/1.0 (contact: miru.gheorghe@gmail.com)"
+    )
 
     page = wiki_wiki.page(industry)
     
@@ -28,6 +27,7 @@ def generate_industry_report(industry):
     
     wikipedia_url = page.fullurl
     content = page.summary[:4000]
+    
     prompt = f"""
     You are an AI market analyst. Generate a **detailed industry report** for the industry: {industry}.
     The report must include:
@@ -38,36 +38,34 @@ def generate_industry_report(industry):
     5️⃣ **Latest Innovations/Disruptions** - AI, sustainability, emerging technology trends.
     6️⃣ **Market Segmentation** - Breakdown by region, demographics, or product type.
     7️⃣ **Future Outlook** - Predictions and trends for the next 5-10 years.
-    
+
     Provide a well-structured, informative, and professional report.
-    
+
     **Source:** {wikipedia_url}
     """
-    
-    import openai
 
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # ✅ Move the OpenAI API call inside the function
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": prompt}]
-)
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
+    )
 
-    
     report_text = response.choices[0].message.content
-    
+
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", style='B', size=16)
     pdf.cell(200, 10, f"{industry} Industry Report", ln=True, align='C')
     pdf.ln(10)
-    
+
     pdf.set_font("Arial", style='B', size=14)
     sections = ["Industry Overview", "Market Size & Growth Trends", "Key Competitors", 
                 "Major Challenges & Opportunities", "Latest Innovations/Disruptions", 
                 "Market Segmentation", "Future Outlook"]
-    
+
     content_split = report_text.split('1️⃣')[1:]
     for index, section in enumerate(sections):
         pdf.set_font("Arial", style='B', size=14)
@@ -76,12 +74,12 @@ response = client.chat.completions.create(
         if index < len(content_split):
             pdf.multi_cell(0, 8, content_split[index].split(f'{index + 2}️⃣')[0])
         pdf.ln(5)
-    
+
     pdf.set_font("Arial", style='I', size=10)
     pdf.multi_cell(0, 8, f"**Source:** {wikipedia_url}")
-    
+
     pdf.output(pdf_filename)
-    
+
     return pdf_filename
 
 @app.route('/')
