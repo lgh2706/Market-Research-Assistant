@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import os
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -25,13 +24,14 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = f"Summarize the following industry report: {content}"
     
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
+        client = openai.OpenAI()
+    response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}]
     )
-
-    report_text = response.choices[0].message.content
-
+    
+        report_text = response.choices[0].message["content"]
+    
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
