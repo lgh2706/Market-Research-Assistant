@@ -6,23 +6,13 @@ import time
 import random
 
 def get_industry_keywords(industry):
-    """Fetch a related industry and generate industry-specific keywords dynamically using OpenAI."""
+    """Fetch industry-specific keywords dynamically using OpenAI."""
     openai_api_key = os.getenv("OPENAI_API_KEY")
     client = openai.OpenAI(api_key=openai_api_key)
     
-    related_industry_prompt = f"""
-    Given the industry "{industry}", suggest a closely related industry.
-    Provide only the industry name.
-    """
-    related_industry_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": related_industry_prompt}]
-    )
-    related_industry = related_industry_response.choices[0].message.content.strip()
-
     primary_keywords_prompt = f"""
     Generate exactly 5 industry-specific keywords for "{industry}".
-    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
+    Ensure these keywords are meaningful and industry-specific.
     Provide only a comma-separated list of keywords, and do not replace them with different words.
     """
     primary_keywords_response = client.chat.completions.create(
@@ -31,21 +21,7 @@ def get_industry_keywords(industry):
     )
     primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
 
-    related_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{related_industry}".
-    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
-    Provide only a comma-separated list of keywords, and do not replace them with different words.
-    """
-    related_keywords_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": related_keywords_prompt}]
-    )
-    related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")]
-
-    print(f"✅ Primary Industry: {industry}, Keywords: {primary_keywords}")
-    print(f"✅ Related Industry: {related_industry}, Keywords: {related_keywords}")
-
-    return primary_keywords, related_industry, related_keywords
+    return primary_keywords
 
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data while handling API rate limits with exponential backoff."""
@@ -77,25 +53,18 @@ def fetch_google_trends_data(keywords):
         return pd.DataFrame()
 
 def generate_trends_csv(industry):
-    """Generate two CSV files for primary and related industry trends with exact UI-selected keywords."""
-    primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
-
+    """Generate a CSV file for industry trends with exact UI-selected keywords."""
+    primary_keywords = get_industry_keywords(industry)
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
-    related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
 
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
     os.makedirs(GENERATED_DIR, exist_ok=True)
 
     primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv") if not primary_data.empty else None
-    related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv") if related_industry and not related_data.empty else None
 
     if primary_csv:
         primary_data.to_csv(primary_csv, index=False)
         print(f"✅ Primary Industry CSV Generated: {primary_csv}")
 
-    if related_csv:
-        related_data.to_csv(related_csv, index=False)
-        print(f"✅ Related Industry CSV Generated: {related_csv}")
-
-    return primary_csv, related_csv
+    return primary_csv
