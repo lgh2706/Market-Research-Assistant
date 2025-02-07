@@ -23,10 +23,10 @@ def generate_industry_report(industry):
     content = page.summary[:4000]
     prompt = (
         f"Provide a detailed industry report on {industry}. "
-        "The report should be divided into these sections: "
+        "The report should be structured into these sections: "
         "Industry Overview, Market Size & Growth Trends, Key Competitors, "
         "Major Challenges & Opportunities, Latest Innovations/Disruptions, "
-        "Market Segmentation, and Future Outlook. Clearly label each section."
+        "Market Segmentation, and Future Outlook. Ensure clear section labels."
     )
 
     response = client.chat.completions.create(
@@ -34,7 +34,7 @@ def generate_industry_report(industry):
         messages=[{"role": "user", "content": prompt}]
     )
 
-    report_text = response.choices[0].message.content.strip().replace("**", "")
+    report_text = response.choices[0].message.content.strip().replace("**", "").replace(":", "")
     
     # Extract sections using explicit markers
     section_titles = [
