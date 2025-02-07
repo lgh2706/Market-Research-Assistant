@@ -26,10 +26,6 @@ def get_trends():
     primary_csv, related_csv = trends.generate_trends_csv(industry)
 
     return jsonify({
-        "primary_industry": industry,
-        "primary_keywords": primary_keywords,
-        "related_industry": related_industry,
-        "related_keywords": related_keywords,
         "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     })
