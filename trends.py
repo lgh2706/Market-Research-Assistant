@@ -22,8 +22,8 @@ def get_industry_keywords(industry):
 
     primary_keywords_prompt = f"""
     Generate exactly 5 industry-specific keywords for "{industry}".
-    Ensure these keywords are meaningful, industry-specific, and distinct from each other.
-    Provide only a comma-separated list of keywords, and do not change the words.
+    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
+    Provide only a comma-separated list of keywords, and do not replace them with different words.
     """
     primary_keywords_response = client.chat.completions.create(
         model="gpt-4",
@@ -32,9 +32,9 @@ def get_industry_keywords(industry):
     primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
 
     related_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{related_industry}" that do not overlap with "{industry}".
-    Ensure these keywords are meaningful, industry-specific, and distinct from the primary industry.
-    Provide only a comma-separated list of keywords, and do not change the words.
+    Generate exactly 5 industry-specific keywords for "{related_industry}".
+    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
+    Provide only a comma-separated list of keywords, and do not replace them with different words.
     """
     related_keywords_response = client.chat.completions.create(
         model="gpt-4",
