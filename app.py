@@ -17,6 +17,7 @@ def generate_industry_report(industry):
     )
     page = wiki_wiki.page(industry)
 
+        wiki_url = page.fullurl if page.exists() else None
     if not page.exists():
         return None
 
@@ -98,6 +99,17 @@ def generate_industry_report(industry):
 
     pdf.output(pdf_filename)
 
+        # Add Wikipedia source to the end of the report
+    if wiki_url:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, "Source & References", ln=True)
+        pdf.ln(5)
+        pdf.set_font("Arial", size=10)
+        pdf.multi_cell(0, 6, f"This report is based on publicly available data from Wikipedia.
+Wikipedia Source: {wiki_url}")
+        pdf.ln(5)
+    
     return pdf_filename
 
 @app.route('/')
