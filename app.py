@@ -54,7 +54,7 @@ response = client.chat.completions.create(
 )
 
     
-    report_text = response["choices"][0]["message"]["content"]
+    report_text = response.choices[0].message.content
     
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
