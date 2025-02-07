@@ -31,7 +31,7 @@ def generate_industry_report(industry):
         messages=[{"role": "user", "content": prompt}]
     )
 
-    report_text = response.choices[0].message.content
+        report_text = response.choices[0].message.content.strip()
 
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
@@ -60,7 +60,43 @@ def generate_industry_report(industry):
     pdf.add_page()
     
     # Sections with improved text formatting
-    sections = [
+        sections = [
+        ("Industry Overview", report_text.split('
+
+')[0] if len(report_text.split('
+
+')) > 0 else "No data available."),
+        ("Market Size & Growth Trends", report_text.split('
+
+')[1] if len(report_text.split('
+
+')) > 1 else "No data available."),
+        ("Key Competitors", report_text.split('
+
+')[2] if len(report_text.split('
+
+')) > 2 else "No data available."),
+        ("Major Challenges & Opportunities", report_text.split('
+
+')[3] if len(report_text.split('
+
+')) > 3 else "No data available."),
+        ("Latest Innovations/Disruptions", report_text.split('
+
+')[4] if len(report_text.split('
+
+')) > 4 else "No data available."),
+        ("Market Segmentation", report_text.split('
+
+')[5] if len(report_text.split('
+
+')) > 5 else "No data available."),
+        ("Future Outlook", report_text.split('
+
+')[6] if len(report_text.split('
+
+')) > 6 else "No data available.")
+    ]
         ("Industry Overview", report_text[:800]),
         ("Market Size & Growth Trends", report_text[800:1600]),
         ("Key Competitors", report_text[1600:2400]),
