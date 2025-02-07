@@ -4,7 +4,7 @@ import wikipediaapi
 import os
 from datetime import datetime
 from fpdf import FPDF
-import trends  # Import the trends module
+import trends
 
 app = Flask(__name__)
 
@@ -23,7 +23,7 @@ def generate_industry_report(industry):
     if not page.exists():
         return None
 
-    content = page.summary[:2000]  # Limit summary size to reduce memory usage
+    content = page.summary[:2000]
     prompt = (
         f"Provide a concise and structured industry report on {industry}. "
         "Ensure the response is limited to essential details, and format it into the following sections: "
@@ -39,7 +39,6 @@ def generate_industry_report(industry):
 
     report_text = response.choices[0].message.content.strip().replace("**", "").replace(":", "")
     
-    # Extract sections using explicit markers
     section_titles = [
         "Industry Overview",
         "Market Size & Growth Trends",
@@ -60,9 +59,8 @@ def generate_industry_report(industry):
 
     pdf_filename = f"{industry}_Industry_Report.pdf"
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)  # Reduce margin to optimize space
+    pdf.set_auto_page_break(auto=True, margin=10)
 
-    # Cover Page
     pdf.add_page()
     pdf.set_font("Arial", "B", 18)
     pdf.cell(200, 15, f"{industry.title()} Industry Report", ln=True, align="C")
@@ -75,7 +73,6 @@ def generate_industry_report(industry):
     pdf.cell(200, 10, "--- End of Cover Page ---", ln=True, align="C")
     pdf.add_page()
 
-    # Table of Contents
     pdf.set_font("Arial", "B", 14)
     pdf.cell(200, 10, "Table of Contents", ln=True)
     pdf.ln(5)
@@ -85,16 +82,14 @@ def generate_industry_report(industry):
     pdf.ln(10)
     pdf.add_page()
 
-    # Sections with optimized text processing
     for title, content in section_data.items():
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 8, title, ln=True)
         pdf.ln(2)
         pdf.set_font("Arial", size=10)
-        pdf.multi_cell(0, 6, content[:2000].encode("latin-1", "replace").decode("latin-1"))  # Limit text per section
+        pdf.multi_cell(0, 6, content[:2000].encode("latin-1", "replace").decode("latin-1"))
         pdf.ln(4)
     
-    # Add Wikipedia source to the end of the report
     if wiki_url:
         pdf.add_page()
         pdf.set_font("Arial", "B", 12)
@@ -104,7 +99,6 @@ def generate_industry_report(industry):
         pdf.multi_cell(0, 6, f"This report is based on publicly available data from Wikipedia.\nWikipedia Source: {wiki_url}")
         pdf.ln(5)
 
-    # Footer with page numbers
     pdf.set_y(-15)
     pdf.set_font("Arial", size=8)
     pdf.cell(0, 10, f"Page {pdf.page_no()}", align="C")
