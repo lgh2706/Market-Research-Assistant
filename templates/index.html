@@ -71,7 +71,7 @@
         <label for="industry">Enter Industry Name:</label><br>
         <input type="text" id="industry" name="industry" required oninput="clearResults()"><br>
         
-        <button type="button" class="btn-report" onclick="generateReport()">Industry Report</button>
+        <button type="button" class="btn-report" onclick="generateReport()">Generate Report</button>
         <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
         
         <div id="loading" class="loader"></div>
@@ -139,11 +139,6 @@
             .then(data => {
                 hideLoading();
                 let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = `<h2>Primary Industry: ${industry}</h2>`;
-                resultDiv.innerHTML += `<h3>Primary Keywords: ${data.primary_keywords.join(", ")}</h3>`;
-                resultDiv.innerHTML += `<h2>Related Industry: ${data.related_industry || "Not Found"}</h2>`;
-                resultDiv.innerHTML += `<h3>Related Keywords: ${data.related_keywords ? data.related_keywords.join(", ") : "Not Found"}</h3>`;
-                
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
                 }
