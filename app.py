@@ -22,6 +22,17 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
+@app.route('/download_trends/<filename>')
+def download_trends(filename):
+    file_path = os.path.join(GENERATED_DIR, filename)
+
+    if os.path.exists(file_path):
+        return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
+    else:
+        print(f"❌ File Not Found: {filename}")
+        return "File Not Found", 404
+
+
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
