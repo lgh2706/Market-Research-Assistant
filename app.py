@@ -29,9 +29,10 @@ def get_trends():
     primary_csv, related_csv = trends.generate_trends_csv(industry)
 
     return jsonify({
-        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
-        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
-    })
+    "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv and os.path.exists(primary_csv) else None,
+    "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv and os.path.exists(related_csv) else None
+})
+
 
 @app.route('/run_predictive_analysis', methods=['POST'])
 def run_predictive_analysis():
