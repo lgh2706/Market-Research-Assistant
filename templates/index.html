@@ -146,6 +146,7 @@
             .then(data => {
                 hideLoading();
                 let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = ""; // Clear previous results
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
                 }
