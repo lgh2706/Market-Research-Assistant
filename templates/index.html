@@ -146,7 +146,7 @@
             .then(data => {
                 hideLoading();
                 let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = ""; // Clear previous results
+                resultDiv.innerHTML = "";
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
                 }
@@ -162,7 +162,26 @@
         }
 
         function runPredictiveAnalysis() {
-            alert("Predictive Analysis functionality will be implemented soon!");
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            showLoading();
+            fetch("/train_model", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `industry=${industry}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                alert(data.message || "Predictive analysis completed.");
+            })
+            .catch(error => {
+                hideLoading();
+                console.error("Error running predictive analysis:", error);
+            });
         }
     </script>
 </body>
