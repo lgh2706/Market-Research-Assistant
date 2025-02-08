@@ -10,9 +10,13 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 
+# Force TensorFlow to use CPU only to avoid GPU errors on Render
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-os.makedirs(GENERATED_DIR, exist_ok=True)
+if not os.path.exists(GENERATED_DIR):
+    os.makedirs(GENERATED_DIR)
 
 def train_predictive_model(primary_csv, related_csv, model_type="linear_regression"):
     try:
