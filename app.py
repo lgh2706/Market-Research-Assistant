@@ -70,9 +70,13 @@ def train_model():
 
     model_path, script_path, message = analysis.train_predictive_model(primary_csv, related_csv, model_type)
 
-    if model_path is None:
-        print(f"❌ Model training failed: {message}")
-        return jsonify({"error": message})
+    # ✅ Debugging: Check if files were actually created
+    print(f"💾 Checking saved files: {model_path} exists? {os.path.exists(model_path)}")
+    print(f"💾 Checking saved files: {script_path} exists? {os.path.exists(script_path)}")
+
+    if model_path is None or not os.path.exists(model_path) or not os.path.exists(script_path):
+        print(f"❌ Model or script not generated correctly!")
+        return jsonify({"error": "Model training failed or files were not saved correctly."})
 
     print(f"✅ Model trained successfully: {model_path}, Script: {script_path}")
     return jsonify({
@@ -80,6 +84,7 @@ def train_model():
         "download_model": f"/download_model/{os.path.basename(model_path)}",
         "download_script": f"/download_script/{os.path.basename(script_path)}"
     })
+
 
 
 @app.route('/download_model/<filename>')
