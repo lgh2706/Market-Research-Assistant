@@ -7,8 +7,10 @@ from datetime import datetime
 # Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-if not os.path.exists(GENERATED_DIR):
-    os.makedirs(GENERATED_DIR)
+if os.path.exists(GENERATED_DIR) and not os.path.isdir(GENERATED_DIR):
+    os.remove(GENERATED_DIR)  # Remove the file if it exists
+os.makedirs(GENERATED_DIR, exist_ok=True)  # Ensure it's a directory
+
 
 
 # OpenAI API Key from environment variable
