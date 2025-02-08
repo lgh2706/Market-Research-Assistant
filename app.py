@@ -9,9 +9,7 @@ app = Flask(__name__, template_folder="templates")  # Ensure templates are corre
 # Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-if not os.path.exists(GENERATED_DIR):
-    os.makedirs(GENERATED_DIR)
-
+os.makedirs(GENERATED_DIR, exist_ok=True)
 
 @app.route("/")
 def home():
