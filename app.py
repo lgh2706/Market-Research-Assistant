@@ -31,6 +31,30 @@ def get_trends():
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     })
 
+@app.route('/train_model', methods=['POST'])
+def train_model():
+    primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
+    related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
+    model_type = request.form.get("model_type", "linear_regression")
+
+    # Debugging: Log file existence
+    print(f"Checking files: {primary_csv} exists? {os.path.exists(primary_csv)}")
+    print(f"Checking files: {related_csv} exists? {os.path.exists(related_csv)}")
+
+    if not os.path.exists(primary_csv) or not os.path.exists(related_csv):
+        return jsonify({"error": "Missing uploaded CSV files. Please upload both primary and related CSVs."}), 400
+
+    model_path, script_path, message = analysis.train_predictive_model(primary_csv, related_csv, model_type)
+
+    if model_path is None:
+        return jsonify({"error": message})
+
+    return jsonify({
+        "message": message,
+        "download_model": f"/download_model/{os.path.basename(model_path)}",
+        "download_script": f"/download_script/{os.path.basename(script_path)}"
+    })
+
 @app.route('/download_trends/<filename>')
 def download_trends(filename):
     file_path = os.path.join(GENERATED_DIR, filename)
@@ -55,25 +79,6 @@ def upload_csv():
         return jsonify({"message": "File uploaded successfully.", "file": filename})
     except Exception as e:
         return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
-
-@app.route('/train_model', methods=['POST'])
-def train_model():
-    primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
-    related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
-    model_type = request.form.get("model_type", "linear_regression")
-    
-    if not os.path.exists(primary_csv) or not os.path.exists(related_csv):
-        return jsonify({"error": "Missing uploaded CSV files. Please upload both primary and related CSVs."}), 400
-    
-    model_path, script_path, message = analysis.train_predictive_model(primary_csv, related_csv, model_type)
-    if model_path is None:
-        return jsonify({"error": message})
-    
-    return jsonify({
-        "message": message,
-        "download_model": f"/download_model/{os.path.basename(model_path)}",
-        "download_script": f"/download_script/{os.path.basename(script_path)}"
-    })
 
 @app.route('/download_model/<filename>')
 def download_model(filename):
