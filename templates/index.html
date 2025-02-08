@@ -171,35 +171,40 @@
         }
 
         function runPredictiveAnalysis() {
-            let industry = document.getElementById("industry").value;
-            let modelType = document.getElementById("modelType").value;
-            if (!industry) {
-                alert("Please enter an industry name!");
-                return;
-            }
-            showLoading();
-            fetch("/train_model", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `industry=${industry}&model_type=${modelType}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
-                if (data.download_model) {
-                    resultDiv.innerHTML += `<p><a href="${data.download_model}" download>Download Trained Model</a></p>`;
-                }
-                if (data.download_script) {
-                    resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script (run_analysis.py)</a></p>`;
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error("Error running predictive analysis:", error);
-            });
+        let industry = document.getElementById("industry").value;
+        let modelType = document.getElementById("modelType").value;
+        if (!industry) {
+            alert("Please enter an industry name!");
+            return;
         }
+
+        showLoading();
+        console.log("📤 Sending request to /train_model with industry:", industry, "and modelType:", modelType);
+
+        fetch("/train_model", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `industry=${encodeURIComponent(industry)}&model_type=${encodeURIComponent(modelType)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            console.log("📥 Response received:", data);
+            let resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
+            if (data.download_model) {
+                resultDiv.innerHTML += `<p><a href="${data.download_model}" download>Download Trained Model</a></p>`;
+            }
+            if (data.download_script) {
+                resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script</a></p>`;
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error("❌ Error running predictive analysis:", error);
+            alert("Failed to complete predictive analysis. Check console logs.");
+        });
+    }
     </script>
 </body>
 </html>
