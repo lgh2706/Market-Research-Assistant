@@ -1,146 +1,93 @@
-from flask import Flask, render_template, request, send_file, send_from_directory
-import openai
-import wikipediaapi
+from flask import Flask, render_template, request, send_file, send_from_directory, jsonify
 import os
-from datetime import datetime
-from fpdf import FPDF
 import trends
+import analysis
+import report
 
-app = Flask(__name__)
-
-# OpenAI API Key from environment variable
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=openai_api_key)
+app = Flask(__name__, template_folder="templates")  # Ensure templates are correctly loaded
 
 # Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-
-# Check if "generated_files" exists as a file and remove it
-if os.path.exists(GENERATED_DIR) and not os.path.isdir(GENERATED_DIR):
-    os.remove(GENERATED_DIR)  # Delete the file to replace it with a directory
-
-# Ensure the directory exists
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-def generate_industry_report(industry):
-    wiki_wiki = wikipediaapi.Wikipedia(
-        user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
-    )
-    page = wiki_wiki.page(industry)
-    
-    wiki_url = page.fullurl if page.exists() else None
-
-    if not page.exists():
-        return None
-
-    content = page.summary[:2000]
-    prompt = (
-        f"Provide a concise and structured industry report on {industry}. "
-        "Ensure the response is limited to essential details, and format it into the following sections: "
-        "Industry Overview, Market Size & Growth Trends, Key Competitors, "
-        "Major Challenges & Opportunities, Latest Innovations/Disruptions, "
-        "Market Segmentation, and Future Outlook. Keep responses compact and structured."
-    )
-
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    report_text = response.choices[0].message.content.strip().replace("**", "").replace(":", "")
-    
-    section_titles = [
-        "Industry Overview",
-        "Market Size & Growth Trends",
-        "Key Competitors",
-        "Major Challenges & Opportunities",
-        "Latest Innovations/Disruptions",
-        "Market Segmentation",
-        "Future Outlook"
-    ]
-    
-    section_data = {title: "No data available." for title in section_titles}
-    
-    for i, title in enumerate(section_titles):
-        start_index = report_text.find(title)
-        if start_index != -1:
-            end_index = report_text.find(section_titles[i + 1]) if i + 1 < len(section_titles) else len(report_text)
-            section_data[title] = report_text[start_index + len(title):end_index].strip()
-
-    pdf_filename = os.path.join(GENERATED_DIR, f"{industry}_Industry_Report.pdf")
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
-
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 18)
-    pdf.cell(200, 15, f"{industry.title()} Industry Report", ln=True, align="C")
-    pdf.ln(8)
-    pdf.set_font("Arial", "I", 12)
-    pdf.cell(200, 10, f"Generated on {datetime.now().strftime('%B %d, %Y')}", ln=True, align="C")
-    pdf.ln(20)
-    pdf.cell(200, 10, "Prepared by AI Market Research Assistant", ln=True, align="C")
-    pdf.ln(15)
-    pdf.cell(200, 10, "--- End of Cover Page ---", ln=True, align="C")
-    pdf.add_page()
-
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "Table of Contents", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    for i, title in enumerate(section_titles, start=1):
-        pdf.cell(200, 8, f"{i}. {title}", ln=True)
-    pdf.ln(10)
-    pdf.add_page()
-
-    for title, content in section_data.items():
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 8, title, ln=True)
-        pdf.ln(2)
-        pdf.set_font("Arial", size=10)
-        pdf.multi_cell(0, 6, content[:2000].encode("latin-1", "replace").decode("latin-1"))
-        pdf.ln(4)
-    
-    if wiki_url:
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 10, "Source & References", ln=True)
-        pdf.ln(5)
-        pdf.set_font("Arial", size=10)
-        pdf.multi_cell(0, 6, f"This report is based on publicly available data from Wikipedia.\nWikipedia Source: {wiki_url}")
-        pdf.ln(5)
-
-    pdf.set_y(-15)
-    pdf.set_font("Arial", size=8)
-    pdf.cell(0, 10, f"Page {pdf.page_no()}", align="C")
-
-    pdf.output(pdf_filename)
-
-    return pdf_filename
-
-@app.route('/')
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
 @app.route('/generate_report', methods=['POST'])
-def generate_report():
+def generate_report_route():
     industry = request.form['industry']
-    pdf_file = generate_industry_report(industry)
+    pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
+    primary_keywords, related_industry, related_keywords = trends.get_industry_keywords(industry)
     primary_csv, related_csv = trends.generate_trends_csv(industry)
-    
-    return {
+
+    return jsonify({
         "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
-    }
+    })
 
-@app.route('/download_trends/<filename>')
-def download_trends(filename):
-    return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
+@app.route('/run_predictive_analysis', methods=['POST'])
+def run_predictive_analysis():
+    industry = request.form['industry']
+    primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv")
+    related_csv = os.path.join(GENERATED_DIR, f"{industry}_Related_Google_Trends.csv")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    if os.path.exists(primary_csv) and os.path.exists(related_csv):
+        return jsonify({
+            "message": f"Use previous data for {industry} or upload new CSVs?",
+            "use_existing": True
+        })
+    
+    return jsonify({"message": "Please upload CSV file for Primary Industry!", "use_existing": False})
+
+@app.route('/upload_csv', methods=['POST'])
+def upload_csv():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided."}), 400
+    
+    file = request.files['file']
+    industry_type = request.form.get("industry_type")
+    
+    if industry_type == "primary":
+        filename = os.path.join(GENERATED_DIR, f"uploaded_primary.csv")
+    elif industry_type == "related":
+        filename = os.path.join(GENERATED_DIR, f"uploaded_related.csv")
+    else:
+        return jsonify({"error": "Invalid industry type."}), 400
+    
+    try:
+        file.save(filename)
+        return jsonify({"message": "File uploaded successfully.", "file": filename})
+    except Exception as e:
+        return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
+
+@app.route('/train_model', methods=['POST'])
+def train_model():
+    primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
+    related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
+    
+    if not os.path.exists(primary_csv) or not os.path.exists(related_csv):
+        return jsonify({"error": "Missing uploaded CSV files. Please upload both primary and related CSVs."}), 400
+    
+    model_path, message = analysis.train_predictive_model(primary_csv, related_csv)
+    if model_path is None:
+        return jsonify({"error": message})
+    
+    return jsonify({"message": message, "download_model": f"/download_model/{os.path.basename(model_path)}"})
+
+@app.route('/download_model/<filename>')
+def download_model(filename):
+    file_path = os.path.join(GENERATED_DIR, filename)
+    if os.path.exists(file_path):
+        return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
+    else:
+        return "File Not Found", 404
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000, debug=True)  # Ensure Flask runs correctly
