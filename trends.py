@@ -78,8 +78,19 @@ def generate_trends_csv(industry):
     GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
     os.makedirs(GENERATED_DIR, exist_ok=True)
 
-    primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv") if not primary_data.empty else None
-    related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv") if related_industry and not related_data.empty else None
+    if not primary_data.empty:
+    primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv")
+    primary_data.to_csv(primary_csv, index=False)
+    print(f"✅ Primary Industry CSV Generated: {primary_csv}")
+else:
+    primary_csv = None
+
+if not related_data.empty:
+    related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv")
+    related_data.to_csv(related_csv, index=False)
+    print(f"✅ Related Industry CSV Generated: {related_csv}")
+else:
+    related_csv = None
 
     if primary_csv:
         primary_data.to_csv(primary_csv, index=False)
