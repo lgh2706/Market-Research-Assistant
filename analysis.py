@@ -10,7 +10,9 @@ from sklearn.metrics import mean_squared_error, r2_score
 # Ensure writable directory exists for storing generated files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-os.makedirs(GENERATED_DIR, exist_ok=True)
+if not os.path.exists(GENERATED_DIR):
+    os.makedirs(GENERATED_DIR)
+
 
 def train_predictive_model(primary_csv, related_csv):
     """Train a predictive model using Google Trends data from both industries."""
