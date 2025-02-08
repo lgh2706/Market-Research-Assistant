@@ -42,11 +42,17 @@
         .btn-trends {
             background-color: #28a745;
         }
+        .btn-predictive {
+            background-color: #ff9800;
+        }
         .btn-report:hover {
             background-color: #0056b3;
         }
         .btn-trends:hover {
             background-color: #218838;
+        }
+        .btn-predictive:hover {
+            background-color: #e68900;
         }
         .loader {
             border: 4px solid #f3f3f3;
@@ -71,8 +77,9 @@
         <label for="industry">Enter Industry Name:</label><br>
         <input type="text" id="industry" name="industry" required oninput="clearResults()"><br>
         
-        <button type="button" class="btn-report" onclick="generateReport()">Generate Report</button>
+        <button type="button" class="btn-report" onclick="generateReport()">Industry Report</button>
         <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
+        <button type="button" class="btn-predictive" onclick="runPredictiveAnalysis()">Predictive Analysis</button>
         
         <div id="loading" class="loader"></div>
     </form>
@@ -135,27 +142,15 @@
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: `industry=${industry}`
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("No Google Trends data available.");
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 hideLoading();
                 let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = `<h2>Google Trends Data Available</h2>`;
-                
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
-                } else {
-                    resultDiv.innerHTML += `<p style="color: red;">❌ No Primary Trends Data Available.</p>`;
                 }
-
                 if (data.related_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
-                } else {
-                    resultDiv.innerHTML += `<p style="color: red;">❌ No Related Trends Data Available.</p>`;
                 }
             })
             .catch(error => {
@@ -163,6 +158,10 @@
                 console.error("Error fetching Google Trends:", error);
                 alert("Failed to retrieve Google Trends data.");
             });
+        }
+
+        function runPredictiveAnalysis() {
+            alert("Predictive Analysis functionality will be implemented soon!");
         }
     </script>
 </body>
