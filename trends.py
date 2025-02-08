@@ -1,54 +1,48 @@
-import openai
 import os
+import wikipediaapi
 import pandas as pd
 from pytrends.request import TrendReq
 import time
 import random
+import re
+import collections
 
 def get_industry_keywords(industry):
-    """Fetch a related industry and generate industry-specific keywords dynamically using OpenAI."""
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    client = openai.OpenAI(api_key=openai_api_key)
+    """Fetch commonly searched keywords related to an industry from Wikipedia, ensuring uniqueness."""
+    wiki_wiki = wikipediaapi.Wikipedia(
+        user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
+    )
+    page = wiki_wiki.page(industry)
     
-    related_industry_prompt = f"""
-    Given the industry "{industry}", suggest a closely related industry.
-    Provide only the industry name.
-    """
+    if not page.exists():
+        return [], []
+    
+    content = page.summary[:2000]  # Limit text extraction
+    words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())  # Extract words of 4+ letters
+    common_words = [word for word in words if word not in ["such", "from", "that", "with", "other", "used", "like", "which"]]
+    keyword_counts = collections.Counter(common_words)
+    
+    all_keywords = [word for word, count in keyword_counts.most_common(10)]  # Select top 10 words
+    primary_keywords = all_keywords[:5]  # First 5 for primary industry
+    secondary_keywords = [word for word in all_keywords[5:] if word not in primary_keywords][:5]  # Ensure unique secondary keywords
 
-    related_industry_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": related_industry_prompt}]
+    print(f"✅ Extracted Primary Keywords for {industry}: {primary_keywords}")
+    print(f"✅ Extracted Secondary Keywords for {industry}: {secondary_keywords}")
+    
+    return primary_keywords, secondary_keywords
+
+def find_related_industry(industry):
+    """Find a related industry based on Wikipedia links."""
+    wiki_wiki = wikipediaapi.Wikipedia(
+        user_agent="MarketResearchBot/1.0 (miru.gheorghe@gmail.com)", language="en"
     )
-    related_industry = related_industry_response.choices[0].message.content.strip()
-
-    primary_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{industry}".
-    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
-    Provide only a comma-separated list of keywords, and do not replace them with different words.
-    """
-
-    primary_keywords_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": primary_keywords_prompt}]
-    )
-    primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
-
-    related_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{related_industry}".
-    Ensure these keywords are meaningful, industry-specific, and match the provided UI selections.
-    Provide only a comma-separated list of keywords, and do not replace them with different words.
-    """
-
-    related_keywords_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": related_keywords_prompt}]
-    )
-    related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")]
-
-    print(f"✅ Primary Industry: {industry}, Keywords: {primary_keywords}")
-    print(f"✅ Related Industry: {related_industry}, Keywords: {related_keywords}")
-
-    return primary_keywords, related_industry, related_keywords
+    page = wiki_wiki.page(industry)
+    
+    if not page.exists():
+        return None
+    
+    links = list(page.links.keys())
+    return links[0] if links else None
 
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data while handling API rate limits with exponential backoff."""
@@ -59,10 +53,12 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends data for: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
+
+    # Introduce a moderate delay to prevent rate limiting
+    time.sleep(random.uniform(5, 10))
 
     try:
-        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')
+        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')  # Fetch data for 5 keywords
         response = pytrends.interest_over_time()
         
         if response.empty:
@@ -80,12 +76,15 @@ def fetch_google_trends_data(keywords):
         return pd.DataFrame()
 
 def generate_trends_csv(industry):
-    """Generate two CSV files for primary and related industry trends with exact UI-selected keywords."""
-    primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
+    """Generate two CSV files for primary and related industry trends."""
+    primary_keywords, secondary_keywords = get_industry_keywords(industry)  # Get 5 primary & 5 secondary industry keywords
+    related_industry = find_related_industry(industry)
+    related_primary_keywords, related_secondary_keywords = get_industry_keywords(related_industry) if related_industry else ([], [])
 
     primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
-    related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
+    related_data = fetch_google_trends_data(related_primary_keywords) if related_primary_keywords else pd.DataFrame()
 
+    # Ensure the directory exists before saving files
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
     os.makedirs(GENERATED_DIR, exist_ok=True)
