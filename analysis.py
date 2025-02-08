@@ -24,19 +24,25 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         primary_df = pd.read_csv(primary_csv)
         related_df = pd.read_csv(related_csv)
     except Exception as e:
+        print(f"Error reading CSV files: {e}")
         return None, None, f"Error reading CSV files: {e}"
 
     if primary_df.shape[1] < 2 or related_df.shape[1] < 2:
+        print("One of the datasets does not contain enough columns for training.")
         return None, None, "One of the datasets does not contain enough columns for training."
 
     # Merge datasets based on date
     merged_df = pd.merge(primary_df, related_df, on='date', how='outer').fillna(0)
+    if merged_df.empty:
+        print("Merged dataset is empty.")
+        return None, None, "Merged dataset is empty."
 
     # Define target and predictor variables
     target = primary_df.columns[1]  # First keyword from primary industry (Y)
     features = related_df.columns[1:]  # All related industry keywords (X)
 
     if len(features) == 0:
+        print("Not enough predictor variables.")
         return None, None, "Not enough predictor variables."
 
     X = merged_df[features]
@@ -59,9 +65,10 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         model.compile(optimizer='adam', loss='mse')
         model.fit(X_train, y_train, epochs=50, verbose=0)
     else:
+        print("Invalid model type selected.")
         return None, None, "Invalid model type selected."
 
-    # Train the model
+    print("Training model...")
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
@@ -69,10 +76,12 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     mse = mean_squared_error(y_test, y_pred)
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
+    print(f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}")
 
     # Save trained model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
     joblib.dump(model, model_filename)
+    print(f"Model saved to {model_filename}")
 
     # Generate Python script
     script_filename = os.path.join(GENERATED_DIR, "run_analysis.py")
@@ -85,15 +94,12 @@ from sklearn.metrics import mean_squared_error, r2_score
 # Load trained model
 model = joblib.load("predictive_model.pkl")
 
-# Load test data
 df = pd.read_csv("{primary_csv}")
 X = df.iloc[:, 1:]
 y = df.iloc[:, 0]  # First column is the target variable
 
-# Make predictions
 y_pred = model.predict(X)
 
-# Compute performance metrics
 mse = mean_squared_error(y, y_pred)
 r2 = r2_score(y, y_pred)
 
@@ -101,5 +107,6 @@ print("Model Performance:")
 print(f"Mean Squared Error: {{mse:.4f}}")
 print(f"R² Score: {{r2:.4f}}")
 """)
+    print(f"Script saved to {script_filename}")
 
     return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
