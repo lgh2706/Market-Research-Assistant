@@ -135,15 +135,27 @@
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: `industry=${industry}`
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("No Google Trends data available.");
+                }
+                return response.json();
+            })
             .then(data => {
                 hideLoading();
                 let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = `<h2>Google Trends Data Available</h2>`;
+                
                 if (data.primary_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
+                } else {
+                    resultDiv.innerHTML += `<p style="color: red;">❌ No Primary Trends Data Available.</p>`;
                 }
+
                 if (data.related_trends) {
                     resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
+                } else {
+                    resultDiv.innerHTML += `<p style="color: red;">❌ No Related Trends Data Available.</p>`;
                 }
             })
             .catch(error => {
