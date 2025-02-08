@@ -10,7 +10,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 
-# Force TensorFlow to use CPU only to avoid GPU errors on Render
+# Disable GPU to prevent TensorFlow errors on Render
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,8 +33,8 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     merged_df = pd.merge(primary_df, related_df, on='date', how='outer').fillna(0)
 
     # Define target and predictor variables
-    target = primary_df.columns[1]  # The first keyword from the focal industry
-    features = related_df.columns[1:]  # All related industry keywords
+    target = primary_df.columns[1]  # First keyword from primary industry (Y)
+    features = related_df.columns[1:]  # All related industry keywords (X)
 
     if len(features) == 0:
         return None, None, "Not enough predictor variables."
