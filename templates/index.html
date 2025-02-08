@@ -108,68 +108,6 @@
             document.getElementById("result").innerHTML = "";
         }
 
-        function generateReport() {
-            let industry = document.getElementById("industry").value;
-            if (!industry) {
-                alert("Please enter an industry name!");
-                return;
-            }
-            
-            showLoading();
-            fetch("/generate_report", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `industry=${industry}`
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                hideLoading();
-                let url = window.URL.createObjectURL(blob);
-                let a = document.createElement("a");
-                a.href = url;
-                a.download = `${industry}_Industry_Report.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            })
-            .catch(error => {
-                hideLoading();
-                console.error("Error generating report:", error);
-            });
-        }
-
-        function getTrends() {
-            let industry = document.getElementById("industry").value;
-            if (!industry) {
-                alert("Please enter an industry name!");
-                return;
-            }
-            
-            showLoading();
-            fetch("/get_trends", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `industry=${industry}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = ""; // Clear previous results
-                if (data.primary_trends) {
-                    resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
-                }
-                if (data.related_trends) {
-                    resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error("Error fetching Google Trends:", error);
-                alert("Failed to retrieve Google Trends data.");
-            });
-        }
-
         function runPredictiveAnalysis() {
             let industry = document.getElementById("industry").value;
             let modelType = document.getElementById("modelType").value;
@@ -178,21 +116,23 @@
                 return;
             }
             showLoading();
+            console.log("Sending request to train_model with industry:", industry, "and modelType:", modelType);
             fetch("/train_model", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `industry=${industry}&model_type=${modelType}`
+                body: `industry=${encodeURIComponent(industry)}&model_type=${encodeURIComponent(modelType)}`
             })
             .then(response => response.json())
             .then(data => {
                 hideLoading();
+                console.log("Response received:", data);
                 let resultDiv = document.getElementById("result");
                 resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
                 if (data.download_model) {
                     resultDiv.innerHTML += `<p><a href="${data.download_model}" download>Download Trained Model</a></p>`;
                 }
                 if (data.download_script) {
-                    resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script (run_analysis.py)</a></p>`;
+                    resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script</a></p>`;
                 }
             })
             .catch(error => {
