@@ -2,14 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Market Research Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
+        }
+        input, select {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+            border-radius: 5px;
+            color: white;
+        }
+        .btn-report {
+            background-color: #007bff;
+        }
+        .btn-trends {
+            background-color: #28a745;
+        }
+        .btn-predictive {
+            background-color: #ff9800;
+        }
+        .btn-report:hover {
+            background-color: #0056b3;
+        }
+        .btn-trends:hover {
+            background-color: #218838;
+        }
+        .btn-predictive:hover {
+            background-color: #e68900;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <h1>Market Research Assistant</h1>
 
     <form id="industryForm">
         <label for="industry">Enter Industry Name:</label><br>
-        <input type="text" id="industry" name="industry" required><br>
+        <input type="text" id="industry" name="industry" required oninput="clearResults()"><br>
+        
+        <button type="button" class="btn-report" onclick="generateReport()">Industry Report</button>
+        <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
+
+        <br><br>
 
         <label for="modelType">Select Model Type:</label><br>
         <select id="modelType">
@@ -18,16 +89,96 @@
             <option value="neural_network">Neural Network</option>
         </select><br>
 
-        <button type="button" onclick="runPredictiveAnalysis()">Run Predictive Analysis</button>
+        <button type="button" class="btn-predictive" onclick="runPredictiveAnalysis()">Run Predictive Analysis</button>
+        
+        <div id="loading" class="loader"></div>
     </form>
 
     <div id="result"></div>
 
     <script>
+        function showLoading() {
+            document.getElementById("loading").style.display = "block";
+        }
+
+        function hideLoading() {
+            document.getElementById("loading").style.display = "none";
+        }
+
+        function clearResults() {
+            document.getElementById("result").innerHTML = "";
+        }
+
+        function generateReport() {
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            
+            showLoading();
+            fetch("/generate_report", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `industry=${industry}`
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                hideLoading();
+                let url = window.URL.createObjectURL(blob);
+                let a = document.createElement("a");
+                a.href = url;
+                a.download = `${industry}_Industry_Report.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                hideLoading();
+                console.error("Error generating report:", error);
+            });
+        }
+
+        function getTrends() {
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            
+            showLoading();
+            fetch("/get_trends", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `industry=${industry}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = ""; // Clear previous results
+                if (data.primary_trends) {
+                    resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
+                }
+                if (data.related_trends) {
+                    resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error("Error fetching Google Trends:", error);
+                alert("Failed to retrieve Google Trends data.");
+            });
+        }
+
         function runPredictiveAnalysis() {
             let industry = document.getElementById("industry").value;
             let modelType = document.getElementById("modelType").value;
-
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+            showLoading();
             fetch("/train_model", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -35,6 +186,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 let resultDiv = document.getElementById("result");
                 resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
                 if (data.download_model) {
@@ -44,7 +196,10 @@
                     resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script</a></p>`;
                 }
             })
-            .catch(error => console.error("Error running predictive analysis:", error));
+            .catch(error => {
+                hideLoading();
+                console.error("Error running predictive analysis:", error);
+            });
         }
     </script>
 </body>
