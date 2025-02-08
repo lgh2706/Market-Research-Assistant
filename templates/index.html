@@ -189,14 +189,21 @@
         .then(response => response.json())
         .then(data => {
             hideLoading();
-            console.log("📥 Response received:", data);
+            console.log("📥 Parsed response data:", data);
+
             let resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
+                resultDiv.innerHTML = `<p>${data.message || "Predictive analysis completed."}</p>`;
+
             if (data.download_model) {
                 resultDiv.innerHTML += `<p><a href="${data.download_model}" download>Download Trained Model</a></p>`;
             }
             if (data.download_script) {
                 resultDiv.innerHTML += `<p><a href="${data.download_script}" download>Download Python Script</a></p>`;
+            }
+
+            if (data.error) {
+                console.error("❌ API Error:", data.error);
+                alert("Error: " + data.error);
             }
         })
         .catch(error => {
