@@ -138,36 +138,44 @@
         }
 
         function getTrends() {
-            let industry = document.getElementById("industry").value;
-            if (!industry) {
-                alert("Please enter an industry name!");
-                return;
-            }
-            
-            showLoading();
-            fetch("/get_trends", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `industry=${industry}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = ""; // Clear previous results
-                if (data.primary_trends) {
-                    resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
-                }
-                if (data.related_trends) {
-                    resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error("Error fetching Google Trends:", error);
-                alert("Failed to retrieve Google Trends data.");
-            });
+    let industry = document.getElementById("industry").value;
+    if (!industry) {
+        alert("Please enter an industry name!");
+        return;
+    }
+
+    showLoading();
+    let trendsButton = document.querySelector(".btn-trends");
+    trendsButton.disabled = true;
+
+    fetch("/get_trends", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `industry=${encodeURIComponent(industry)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        trendsButton.disabled = false;
+
+        let resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<p>${data.message}</p>`;  // ✅ Show message if Yahoo Finance is used
+
+        if (data.primary_trends) {
+            resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
         }
+        if (data.related_trends) {
+            resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        trendsButton.disabled = false;
+        console.error("Error fetching trends:", error);
+        alert("Failed to fetch trends data. Please try again later.");
+    });
+}
+
 
         function runPredictiveAnalysis() {
         let industry = document.getElementById("industry").value;
