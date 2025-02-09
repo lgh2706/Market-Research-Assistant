@@ -17,12 +17,14 @@ else:
 
 def get_industry_keywords(industry):
     """Fetch industry-specific keywords dynamically using OpenAI."""
+
     openai_api_key = os.getenv("OPENAI_API_KEY")
     client = openai.OpenAI(api_key=openai_api_key)
-    
+
+    # ✅ Find a better related industry
     related_industry_prompt = f"""
-    Given the industry "{industry}", suggest a closely related industry.
-    Provide only the industry name.
+    Given the industry "{industry}", suggest the most closely related industry in terms of market trends.
+    Provide only one related industry name.
     """
     related_industry_response = client.chat.completions.create(
         model="gpt-4",
@@ -30,9 +32,10 @@ def get_industry_keywords(industry):
     )
     related_industry = related_industry_response.choices[0].message.content.strip()
 
+    # ✅ Fetch the **most relevant** 5 keywords for the **focal industry**
     primary_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{industry}".
-    Ensure these keywords are meaningful, industry-specific, and do not include general terms.
+    Generate exactly 5 high-impact industry-specific keywords for "{industry}".
+    Ensure these keywords are meaningful, trending, and useful for Google Trends analysis.
     Provide only a comma-separated list of keywords.
     """
     primary_keywords_response = client.chat.completions.create(
@@ -41,9 +44,10 @@ def get_industry_keywords(industry):
     )
     primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
 
+    # ✅ Fetch 5 **different** keywords for the related industry
     related_keywords_prompt = f"""
     Generate exactly 5 industry-specific keywords for "{related_industry}".
-    Ensure these keywords are meaningful, industry-specific, and different from the primary industry.
+    Ensure these keywords are distinct from those of "{industry}" but still relevant for trend comparison.
     Provide only a comma-separated list of keywords.
     """
     related_keywords_response = client.chat.completions.create(
@@ -51,6 +55,10 @@ def get_industry_keywords(industry):
         messages=[{"role": "user", "content": related_keywords_prompt}]
     )
     related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")]
+
+    print(f"✅ Selected related industry: {related_industry}")
+    print(f"📊 Primary keywords: {primary_keywords}")
+    print(f"📊 Related keywords: {related_keywords}")
 
     return primary_keywords, related_industry, related_keywords
 
