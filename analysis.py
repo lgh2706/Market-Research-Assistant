@@ -97,4 +97,34 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     joblib.dump(model, model_filename)
     print(f"💾 Model saved to: {model_filename}")
 
-    return model_filename, None, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
+    # ✅ Ensure script file is properly assigned
+    script_filename = os.path.join(GENERATED_DIR, "run_analysis.py")
+    try:
+        with open(script_filename, "w") as f:
+            f.write(f"""
+import joblib
+import pandas as pd
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Load trained model
+model = joblib.load("predictive_model.pkl")
+
+df = pd.read_csv("{primary_csv}")
+X = df.iloc[:, 1:]
+y = df.iloc[:, 0]
+
+y_pred = model.predict(X)
+
+mse = mean_squared_error(y, y_pred)
+r2 = r2_score(y, y_pred)
+
+print("Model Performance:")
+print(f"Mean Squared Error: {{mse:.4f}}")
+print(f"R² Score: {{r2:.4f}}")
+""")
+        print(f"💾 Script saved to: {script_filename}")
+    except Exception as e:
+        print(f"❌ Error saving script: {e}")
+        script_filename = None  # Prevents NoneType error
+
+    return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
