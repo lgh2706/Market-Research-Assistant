@@ -22,22 +22,33 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
+import threading
+
+fetch_status = {}  # Dictionary to track job status
+
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
-    print(f"🔍 Fetching Google Trends data for: {industry}")
 
-    primary_csv, related_csv = trends.generate_trends_csv(industry)
-    message = "Google Trends data fetched successfully!"
+    # ✅ If a job is already running, prevent multiple calls
+    if industry in fetch_status and fetch_status[industry] == "running":
+        return jsonify({"message": "Google Trends data is already being fetched. Please check the status later."})
 
-    if primary_csv and "yahoo_finance" in primary_csv:
-        message = "Google Trends data was unavailable. Using Yahoo Finance as an alternative."
+    # ✅ Start the job in the background
+    fetch_status[industry] = "running"
+    thread = threading.Thread(target=fetch_trends_in_background, args=(industry,))
+    thread.start()
 
-    return jsonify({
-        "message": message,
-        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
-        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
-    })
+    return jsonify({"message": "Google Trends data is being fetched. Use /get_trends_status to check progress."})
+
+@app.route('/get_trends_status', methods=['GET'])
+def get_trends_status():
+    industry = request.args.get('industry')
+
+    if industry not in fetch_status:
+        return jsonify({"message": "No trends job found for this industry."})
+
+    return jsonify({"status": fetch_status[industry]})
 
 
 
