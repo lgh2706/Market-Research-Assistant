@@ -170,43 +170,45 @@
             });
         }
         function getYFinance() {
-            let industry = document.getElementById("industry").value;
-            if (!industry) {
-                alert("Please enter an industry name!");
-                return;
-            }
+    let focalIndustry = document.getElementById("industry").value;
 
-            showLoading();
-            let yfinanceButton = document.querySelector(".btn-yfinance");
-            yfinanceButton.disabled = true;
+    if (!focalIndustry) {
+        alert("Please enter an industry name!");
+        return;
+    }
 
-            fetch("/get_yfinance", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `industry=${encodeURIComponent(industry)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-            hideLoading();
-            yfinanceButton.disabled = false;
+    showLoading();
+    let yfinanceButton = document.querySelector(".btn-yfinance");
+    yfinanceButton.disabled = true;
 
-            let resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = `<p>${data.message}</p>`;
+    fetch("/get_yfinance", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `focalIndustry=${encodeURIComponent(focalIndustry)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        yfinanceButton.disabled = false;
 
-            if (data.primary_trends) {
-                resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
-            }
-            if (data.related_trends) {
-                resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
-            }
-            })
-            .catch(error => {
-            hideLoading();
-            yfinanceButton.disabled = false;
-            console.error("Error fetching Yahoo Finance Data:", error);
-            alert("Failed to retrieve Yahoo Finance data.");
-            });
+        let resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<p>${data.message}</p>`;
+
+        if (data.focal_trends) {
+            resultDiv.innerHTML += `<p><a href="${data.focal_trends}" download>Download Focal Industry Yahoo Finance Data</a></p>`;
         }
+        if (data.related_trends) {
+            resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Yahoo Finance Data</a></p>`;
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        yfinanceButton.disabled = false;
+        console.error("Error fetching Yahoo Finance Data:", error);
+        alert("Failed to retrieve Yahoo Finance data.");
+    });
+}
+
 
         function runPredictiveAnalysis() {
         let industry = document.getElementById("industry").value;
