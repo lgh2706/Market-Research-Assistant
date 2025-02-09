@@ -181,7 +181,7 @@
     let yfinanceButton = document.querySelector(".btn-yfinance");
     yfinanceButton.disabled = true;
 
-    fetch("/get_yfinance", {
+    fetch("/get_fin_trends", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `focalIndustry=${encodeURIComponent(focalIndustry)}`
