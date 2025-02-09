@@ -5,6 +5,7 @@ from pytrends.request import TrendReq
 import time
 import random
 
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 
@@ -81,15 +82,14 @@ def fetch_google_trends_data(keywords):
 
     pytrends = TrendReq(hl='en-US', tz=360)
 
-    max_retries = 3  # Retry up to 3 times if request fails
+    max_retries = 2  # Reduce retries to 2 to avoid long delays
     for attempt in range(max_retries):
         try:
-            wait_time = random.uniform(45, 60)  # ✅ Increase wait time to 45-60 seconds
+            wait_time = random.uniform(30, 45)  # ✅ Reduce wait time slightly
             print(f"⏳ Waiting {wait_time:.2f} seconds before request... (Attempt {attempt+1}/{max_retries})")
             time.sleep(wait_time)
 
             pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
-
             response = pytrends.interest_over_time()
 
             if response.empty:
@@ -106,7 +106,7 @@ def fetch_google_trends_data(keywords):
         except Exception as e:
             print(f"❌ Error fetching Google Trends data (Attempt {attempt+1}): {e}")
             if attempt < max_retries - 1:
-                wait_time_retry = random.uniform(30, 45)
+                wait_time_retry = random.uniform(20, 30)  # ✅ Reduce retry wait time
                 print(f"🔁 Retrying in {wait_time_retry:.2f} seconds...")
                 time.sleep(wait_time_retry)
 
