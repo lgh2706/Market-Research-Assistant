@@ -146,7 +146,7 @@
 
             showLoading();  // ✅ Keep loading spinner visible
             let trendsButton = document.querySelector(".btn-trends");
-            trendsButton.disabled = true;  // ✅ Disable button to prevent multiple clicks
+            trendsButton.disabled = true;  // ✅ Disable button while fetching
 
             fetch("/get_trends", {
             method: "POST",
@@ -155,7 +155,7 @@
             })
             .then(response => response.json())
             .then(data => {
-            hideLoading();  // ✅ Hide loading spinner only when job is done
+            hideLoading();  // ✅ Hide loading spinner only when data is ready
             trendsButton.disabled = false;  // ✅ Re-enable button
 
             let resultDiv = document.getElementById("result");
@@ -167,14 +167,14 @@
             if (data.related_trends) {
                 resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
             }
-            })
+        })
             .catch(error => {
             hideLoading();
             trendsButton.disabled = false;
             console.error("Error fetching Google Trends:", error);
             alert("Failed to fetch Google Trends data. Please try again later.");
-            });
-        }
+        });
+    }
 
 
         function runPredictiveAnalysis() {
