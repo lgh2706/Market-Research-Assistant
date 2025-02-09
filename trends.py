@@ -92,6 +92,9 @@ def generate_trends_csv(industry):
         print("❌ Primary industry trends data is empty!")
         primary_csv = None
     else:
+        primary_data.reset_index(inplace=True)  # Convert index to column
+        if 'date' not in primary_data.columns:
+            primary_data.rename(columns={primary_data.columns[0]: 'date'}, inplace=True)
         primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv")
         primary_data.to_csv(primary_csv, index=False)
         print(f"✅ Primary CSV saved: {primary_csv}")
@@ -100,9 +103,13 @@ def generate_trends_csv(industry):
         print("❌ Related industry trends data is empty!")
         related_csv = None
     else:
+        related_data.reset_index(inplace=True)  # Convert index to column
+        if 'date' not in related_data.columns:
+            related_data.rename(columns={related_data.columns[0]: 'date'}, inplace=True)
         related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv")
         related_data.to_csv(related_csv, index=False)
         print(f"✅ Related CSV saved: {related_csv}")
 
     return primary_csv, related_csv
+
 
