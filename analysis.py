@@ -7,11 +7,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 
-# Disable GPU to prevent TensorFlow errors on Render
+# Disable GPU (Not needed anymore since we removed Neural Network)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,7 +47,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    # ✅ Feature Selection for Linear Regression: Keep only strong predictors (correlation > 0.3 instead of 0.6)
+    # ✅ Feature Selection for Linear Regression: Keep only strong predictors (correlation > 0.3)
     if model_type == "linear_regression":
         correlation_matrix = merged_df.corr(numeric_only=True)
         strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
@@ -66,12 +63,12 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         X = merged_df[strong_features]
         print(f"📊 Selected features for Linear Regression: {strong_features}")
 
-    # ✅ Normalize features for Neural Network
+    # ✅ Standardize features for better regression performance
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Train-Test Split
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled if model_type == "neural_network" else X, y, test_size=0.2, random_state=42)
+    # Train-Test Split (Now 70%-30% instead of 80%-20%)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
 
     print(f"🏋️ Training model: {model_type}...")
 
@@ -80,20 +77,8 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         model = LinearRegression()
     
     elif model_type == "random_forest":
-        model = RandomForestRegressor(n_estimators=100, max_depth=10, min_samples_split=4, random_state=42)
+        model = RandomForestRegressor(n_estimators=100, max_depth=15, min_samples_split=2, random_state=42)
     
-    elif model_type == "neural_network":
-        model = Sequential([
-            Dense(16, activation='relu', input_shape=(X_train.shape[1],)),
-            BatchNormalization(),
-            Dropout(0.3),
-            Dense(16, activation='relu'),
-            Dropout(0.3),
-            Dense(1)
-        ])
-        model.compile(optimizer='adam', loss='mse')
-        model.fit(X_train, y_train, epochs=150, batch_size=8, verbose=0)
-
     else:
         print("❌ Invalid model type selected.")
         return None, None, "Invalid model type selected."
@@ -136,4 +121,3 @@ print(f"R² Score: {{r2:.4f}}")
     print(f"💾 Script saved to: {script_filename}")
 
     return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
-
