@@ -26,16 +26,21 @@ def generate_report_route():
 
 from threading import Thread
 
+from threading import Lock
+
+fetch_lock = Lock()  # Prevents multiple simultaneous API calls
+
 def fetch_trends_in_background(industry):
     """Runs Google Trends data fetching as a separate thread to avoid request timeouts."""
-    print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
-    primary_csv, related_csv = trends.generate_trends_csv(industry)
+    with fetch_lock:  # Ensures only one request runs at a time
+        print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
+        primary_csv, related_csv = trends.generate_trends_csv(industry)
     
-    # ✅ Log when background job is finished
-    if primary_csv and related_csv:
-        print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
-    else:
-        print(f"❌ Google Trends data fetching failed for {industry}")
+        # ✅ Log when background job is finished
+        if primary_csv and related_csv:
+            print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
+        else:
+            print(f"❌ Google Trends data fetching failed for {industry}")
 
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
