@@ -69,11 +69,10 @@ def get_industry_keywords(industry):
 
 
 from pytrends.request import TrendReq
-import yfinance as yf
 import time, random
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits and switching to Yahoo Finance if needed."""
+    """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
         print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
@@ -81,18 +80,15 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
+    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
     try:
-        wait_time = random.uniform(30, 45)  # Wait before request to prevent rate limit
-        print(f"⏳ Waiting {wait_time:.2f} seconds before request...")
-        time.sleep(wait_time)
-
-        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
+        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
         response = pytrends.interest_over_time()
 
         if response.empty:
             print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
-            return fetch_yahoo_finance_data(keywords)  # ✅ Switch to Yahoo Finance if Google fails
+            return pd.DataFrame()
 
         print(f"✅ Google Trends data retrieved successfully for {keywords}")
 
@@ -102,9 +98,8 @@ def fetch_google_trends_data(keywords):
         return response
 
     except Exception as e:
-        print(f"❌ Google Trends API failed: {e}")
-        return fetch_yahoo_finance_data(keywords)  # ✅ Switch to Yahoo Finance if Google fails
-
+        print(f"❌ Error fetching Google Trends data: {e}")
+        return pd.DataFrame()
 
 
 
@@ -144,28 +139,4 @@ def generate_trends_csv(industry):
 
     return primary_csv, related_csv
 
-def fetch_yahoo_finance_data(keywords):
-    """Retrieve alternative financial trend data from Yahoo Finance."""
-    print(f"🔍 Fetching Yahoo Finance data for: {keywords}")
-
-    df_list = []
-    for keyword in keywords:
-        try:
-            stock = yf.Ticker(keyword)
-            hist = stock.history(period="5y")  # ✅ Use same 5-year period
-            hist = hist[['Close']].rename(columns={'Close': keyword})  # ✅ Keep format similar to Google Trends
-            hist['date'] = hist.index
-            df_list.append(hist)
-            print(f"✅ Yahoo Finance data retrieved for {keyword}")
-
-        except Exception as e:
-            print(f"❌ Error fetching Yahoo Finance data for {keyword}: {e}")
-
-    if df_list:
-        merged_df = pd.concat(df_list, axis=1)
-        merged_df.reset_index(drop=True, inplace=True)
-        return merged_df
-
-    print("❌ Yahoo Finance data fetch failed completely.")
-    return pd.DataFrame()
 
