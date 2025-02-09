@@ -5,7 +5,6 @@ from pytrends.request import TrendReq
 import time
 import random
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 
@@ -73,7 +72,7 @@ from pytrends.request import TrendReq
 import time, random
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits and reducing request timeframes."""
+    """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
         print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
@@ -81,41 +80,26 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-    timeframes = ['today 5-y', 'today 4-y', 'today 3-y', 'today 2-y', 'today 1-y']  # ✅ Decreasing timeframes
-    max_retries = 2  # Maximum retries per timeframe
+    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
-    for timeframe in timeframes:
-        for attempt in range(max_retries):
-            try:
-                wait_time = random.uniform(20, 40)  # ✅ Reduce wait time to 20-40 seconds
-                print(f"⏳ Waiting {wait_time:.2f} seconds before request... (Attempt {attempt+1}/{max_retries}, Timeframe: {timeframe})")
-                time.sleep(wait_time)
+    try:
+        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
+        response = pytrends.interest_over_time()
 
-                pytrends.build_payload(keywords, timeframe=timeframe, geo='')
-                response = pytrends.interest_over_time()
+        if response.empty:
+            print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
+            return pd.DataFrame()
 
-                if response.empty:
-                    print(f"❌ Google Trends returned an empty dataset for keywords: {keywords} (Timeframe: {timeframe})")
-                    continue  # Retry with the next timeframe
+        print(f"✅ Google Trends data retrieved successfully for {keywords}")
 
-                print(f"✅ Google Trends data retrieved successfully for {keywords} (Timeframe: {timeframe})")
+        if 'isPartial' in response.columns:
+            response = response.drop(columns=['isPartial'])
 
-                if 'isPartial' in response.columns:
-                    response = response.drop(columns=['isPartial'])
+        return response
 
-                return response
-
-            except Exception as e:
-                print(f"❌ Error fetching Google Trends data (Attempt {attempt+1}, Timeframe: {timeframe}): {e}")
-                if attempt < max_retries - 1:
-                    wait_time_retry = random.uniform(20, 30)
-                    print(f"🔁 Retrying in {wait_time_retry:.2f} seconds...")
-                    time.sleep(wait_time_retry)
-
-    print(f"❌ All attempts failed for keywords: {keywords}")
-    return pd.DataFrame()
-
-
+    except Exception as e:
+        print(f"❌ Error fetching Google Trends data: {e}")
+        return pd.DataFrame()
 
 
 
