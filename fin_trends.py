@@ -114,11 +114,20 @@ def generate_yfinance_csv(focalIndustry):
         focal_csv = os.path.join(GENERATED_DIR, f"{focalIndustry}_Yahoo_Finance.csv")
         related_csv = os.path.join(GENERATED_DIR, f"{relatedIndustry}_Yahoo_Finance.csv")
 
+        # ✅ Ensure a copy of the files is saved as 'uploaded_primary.csv' and 'uploaded_related.csv'
+        uploaded_primary = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
+        uploaded_related = os.path.join(GENERATED_DIR, "uploaded_related.csv")
+
         if focal_data is not None:
             focal_data.to_csv(focal_csv, index=False)
+            focal_data.to_csv(uploaded_primary, index=False)  # ✅ Save a copy for training
 
         if related_data is not None:
             related_data.to_csv(related_csv, index=False)
+            related_data.to_csv(uploaded_related, index=False)  # ✅ Save a copy for training
+
+
+        
 
         return focal_csv, related_csv
 
