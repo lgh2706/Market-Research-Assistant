@@ -54,8 +54,8 @@ def get_trends():
 
 
 
-@app.route('/get_yfinance', methods=['POST'])
-def get_yfinance():
+@app.route('/get_fin_trends', methods=['POST'])
+def get_fin_trends():
     """Handles Yahoo Finance data retrieval for the selected focal industry."""
     focalIndustry = request.form.get('focalIndustry')  # ✅ Use `.get()` to avoid key errors
 
@@ -77,7 +77,7 @@ def get_yfinance():
         })
 
     except Exception as e:
-        print(f"❌ Error in get_yfinance: {e}")
+        print(f"❌ Error in get_fin_trends: {e}")
         return jsonify({"error": "An error occurred while retrieving Yahoo Finance data."}), 500
 
 
