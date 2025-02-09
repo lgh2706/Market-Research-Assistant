@@ -43,17 +43,15 @@ def get_industry_companies(industry, exclude_companies=[]):
 
 
 def fetch_stock_data(stock_symbols):
-    """Retrieve stock close price data from Yahoo Finance, with debug logging."""
+    """Retrieve stock close price data from Yahoo Finance and format correctly."""
     print(f"🔍 Fetching Yahoo Finance data for: {stock_symbols}")
-
-
 
     df_list = []
     for symbol in stock_symbols:
         try:
             print(f"🟢 Fetching data for {symbol}...")  # ✅ Log before fetching
 
-            stock = yfinance.Ticker(symbol)
+            stock = yf.Ticker(symbol)
             hist = stock.history(period="1y")
 
             if hist.empty:
@@ -61,7 +59,8 @@ def fetch_stock_data(stock_symbols):
                 continue  # ✅ Skip this stock if no data
 
             hist = hist[['Close']].rename(columns={'Close': symbol})
-            hist['date'] = hist.index
+            hist.reset_index(inplace=True)  # ✅ Ensure 'Date' is the first column
+            hist.rename(columns={'Date': 'date'}, inplace=True)  # ✅ Rename 'Date' column
             df_list.append(hist)
 
             print(f"✅ Data retrieved for {symbol}")
@@ -70,12 +69,13 @@ def fetch_stock_data(stock_symbols):
             print(f"❌ Error fetching data for {symbol}: {e}")
 
     if df_list:
-        merged_df = pd.concat(df_list, axis=1)
-        merged_df.reset_index(drop=True, inplace=True)
+        merged_df = pd.concat(df_list, axis=1)  # ✅ Merge all dataframes
+        merged_df = merged_df.loc[:, ~merged_df.columns.duplicated()]  # ✅ Remove duplicate columns
         return merged_df
 
     print("❌ No stock data retrieved.")
     return None
+
 
 
 def generate_yfinance_csv(focalIndustry):
