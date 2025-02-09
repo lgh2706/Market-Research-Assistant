@@ -11,28 +11,8 @@ app = Flask(__name__, template_folder="templates")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 os.makedirs(GENERATED_DIR, exist_ok=True)
-if __name__ == "__main__":
-    from gunicorn.app.base import BaseApplication
 
-    class GunicornApp(BaseApplication):
-        def __init__(self, app, options=None):
-            self.options = options or {}
-            self.application = app
-            super().__init__()
 
-        def load_config(self):
-            for key, value in self.options.items():
-                self.cfg.set(key, value)
-
-        def load(self):
-            return self.application
-
-    options = {
-        "bind": "0.0.0.0:10000",
-        "timeout": 120,  # Increase timeout to 120 seconds
-        "workers": 2
-    }
-    GunicornApp(app, options).run()
 
 @app.route("/")
 def home():
@@ -145,4 +125,24 @@ def download_script(filename):
     return "File Not Found", 404
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=True)
+    from gunicorn.app.base import BaseApplication
+
+    class GunicornApp(BaseApplication):
+        def __init__(self, app, options=None):
+            self.options = options or {}
+            self.application = app
+            super().__init__()
+
+        def load_config(self):
+            for key, value in self.options.items():
+                self.cfg.set(key, value)
+
+        def load(self):
+            return self.application
+
+    options = {
+        "bind": "0.0.0.0:10000",
+        "timeout": 180,  # ✅ Increase timeout to 180 seconds
+        "workers": 2
+    }
+    GunicornApp(app, options).run()
