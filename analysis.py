@@ -47,28 +47,30 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    # ✅ Feature Selection for Linear Regression: Keep only strong predictors (correlation > 0.3)
-    if model_type == "linear_regression":
-        correlation_matrix = merged_df.corr(numeric_only=True)
-        strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
-        strong_features = strong_features[strong_features > 0.3].index.tolist()
+    # ✅ Remove columns with all NaN values
+    X = X.dropna(axis=1, how='all')
 
-        if target in strong_features:
-            strong_features.remove(target)  # Remove target from predictor list
-        
-        if len(strong_features) == 0:
-            print("⚠️ No strongly correlated features found! Using all features.")
-            strong_features = features  # Use all features if no strong ones exist
+    # ✅ Feature Selection: Drop weak features (< 0.2 correlation)
+    correlation_matrix = merged_df.corr(numeric_only=True)
+    strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
+    strong_features = strong_features[strong_features > 0.2].index.tolist()
 
-        X = merged_df[strong_features]
-        print(f"📊 Selected features for Linear Regression: {strong_features}")
+    if target in strong_features:
+        strong_features.remove(target)  # Remove target from predictor list
 
-    # ✅ Standardize features for better regression performance
+    if len(strong_features) == 0:
+        print("⚠️ No strongly correlated features found! Using all features.")
+        strong_features = features  # Use all features if no strong ones exist
+
+    X = merged_df[strong_features]
+    print(f"📊 Selected features: {strong_features}")
+
+    # ✅ Standardize features for better model performance
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Train-Test Split (Now 70%-30% instead of 80%-20%)
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
+    # Train-Test Split (Now 75%-25% instead of 80%-20%)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.25, random_state=42)
 
     print(f"🏋️ Training model: {model_type}...")
 
@@ -95,29 +97,4 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     joblib.dump(model, model_filename)
     print(f"💾 Model saved to: {model_filename}")
 
-    script_filename = os.path.join(GENERATED_DIR, "run_analysis.py")
-    with open(script_filename, "w") as f:
-        f.write(f"""
-import joblib
-import pandas as pd
-from sklearn.metrics import mean_squared_error, r2_score
-
-# Load trained model
-model = joblib.load("predictive_model.pkl")
-
-df = pd.read_csv("{primary_csv}")
-X = df.iloc[:, 1:]
-y = df.iloc[:, 0]
-
-y_pred = model.predict(X)
-
-mse = mean_squared_error(y, y_pred)
-r2 = r2_score(y, y_pred)
-
-print("Model Performance:")
-print(f"Mean Squared Error: {{mse:.4f}}")
-print(f"R² Score: {{r2:.4f}}")
-""")
-    print(f"💾 Script saved to: {script_filename}")
-
-    return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
+    return model_filename, None, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
