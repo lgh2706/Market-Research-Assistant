@@ -4,7 +4,7 @@ import shutil
 import trends
 import analysis
 import report
-import yfinance
+import fin_trends
 
 app = Flask(__name__, template_folder="templates")
 
@@ -65,7 +65,7 @@ def get_yfinance():
     print(f"🔍 Fetching Yahoo Finance data for: {focalIndustry}")
 
     try:
-        focal_csv, related_csv = yfinance.generate_yfinance_csv(focalIndustry)
+        focal_csv, related_csv = fin_trends.generate_yfinance_csv(focalIndustry)
 
         if not focal_csv or not related_csv:
             return jsonify({"error": "Yahoo Finance data could not be generated."}), 500  # ✅ Error if CSVs not generated
