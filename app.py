@@ -22,9 +22,25 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
+
 import threading
 
 fetch_status = {}  # Dictionary to track job status
+
+def fetch_trends_in_background(industry):
+    """Runs Google Trends data fetching as a separate thread and updates job status."""
+    global fetch_status
+
+    print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
+    primary_csv, related_csv = trends.generate_trends_csv(industry)
+
+    # ✅ Update job status after completion
+    if primary_csv and related_csv:
+        fetch_status[industry] = "completed"
+        print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
+    else:
+        fetch_status[industry] = "failed"
+        print(f"❌ Google Trends data fetching failed for {industry}")
 
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
