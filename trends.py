@@ -72,6 +72,9 @@ def get_industry_keywords(industry):
 from pytrends.request import TrendReq
 import time, random
 
+from pytrends.request import TrendReq
+import time, random
+
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data while handling API rate limits and avoiding request failures."""
     if not keywords:
@@ -83,9 +86,10 @@ def fetch_google_trends_data(keywords):
     pytrends = TrendReq(hl='en-US', tz=360)
 
     max_retries = 2  # Reduce retries to 2 to avoid long delays
+    wait_time = random.uniform(45, 60)  # ✅ Increase wait time to prevent rate limiting
+
     for attempt in range(max_retries):
         try:
-            wait_time = random.uniform(30, 45)  # ✅ Reduce wait time slightly
             print(f"⏳ Waiting {wait_time:.2f} seconds before request... (Attempt {attempt+1}/{max_retries})")
             time.sleep(wait_time)
 
@@ -106,12 +110,13 @@ def fetch_google_trends_data(keywords):
         except Exception as e:
             print(f"❌ Error fetching Google Trends data (Attempt {attempt+1}): {e}")
             if attempt < max_retries - 1:
-                wait_time_retry = random.uniform(20, 30)  # ✅ Reduce retry wait time
+                wait_time_retry = random.uniform(30, 45)  # ✅ Delay before retry
                 print(f"🔁 Retrying in {wait_time_retry:.2f} seconds...")
                 time.sleep(wait_time_retry)
 
     print(f"❌ All {max_retries} attempts failed for keywords: {keywords}")
     return pd.DataFrame()
+
 
 
 
