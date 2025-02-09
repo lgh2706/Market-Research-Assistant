@@ -12,8 +12,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-
-
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -24,53 +22,12 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
-from threading import Thread, Lock
-
-fetch_lock = Lock()
-is_fetching = False
-
-def fetch_trends_in_background(industry):
-    """Ensures only one Google Trends request runs at a time to prevent rate limiting."""
-    global is_fetching
-    with fetch_lock:
-        if is_fetching:
-            print(f"⚠️ A Google Trends job is already running for {industry}. Ignoring duplicate request.")
-            return
-        is_fetching = True  # ✅ Lock the job to prevent duplicates
-
-    print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
-    primary_csv, related_csv = trends.generate_trends_csv(industry)
-    
-    # ✅ Unlock job after completion
-    with fetch_lock:
-        is_fetching = False
-
-    if primary_csv and related_csv:
-        print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
-    else:
-        print(f"❌ Google Trends data fetching failed for {industry}")
-
-
-
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
     print(f"🔍 Fetching Google Trends data for: {industry}")
 
-    primary_csv, related_csv = trends.generate_trends_csv(industry)  # Run synchronously
-
-    if primary_csv and related_csv:
-        return jsonify({
-            "message": "Google Trends data fetched successfully!",
-            "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}",
-            "related_trends": f"/download_trends/{os.path.basename(related_csv)}"
-        })
-    else:
-        return jsonify({"error": "Google Trends data fetching failed. Please try again."}), 500
-
-
-
-
+    primary_csv, related_csv = trends.generate_trends_csv(industry)
 
     if primary_csv:
         print(f"✅ Primary trends CSV generated: {primary_csv}")
@@ -166,24 +123,4 @@ def download_script(filename):
     return "File Not Found", 404
 
 if __name__ == "__main__":
-    from gunicorn.app.base import BaseApplication
-
-    class GunicornApp(BaseApplication):
-        def __init__(self, app, options=None):
-            self.options = options or {}
-            self.application = app
-            super().__init__()
-
-        def load_config(self):
-            for key, value in self.options.items():
-                self.cfg.set(key, value)
-
-        def load(self):
-            return self.application
-
-    options = {
-        "bind": "0.0.0.0:10000",
-        "timeout": 300,  # ✅ Increase timeout to 180 seconds
-        "workers": 2
-    }
-    GunicornApp(app, options).run()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=True)
