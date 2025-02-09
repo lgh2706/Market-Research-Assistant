@@ -54,19 +54,20 @@ def fetch_trends_in_background(industry):
 
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
-    global is_fetching
     industry = request.form['industry']
+    print(f"🔍 Fetching Google Trends data for: {industry}")
 
-    # ✅ Prevent duplicate requests while fetching
-    if is_fetching:
-        return jsonify({"message": "Google Trends data is already being fetched. Please wait before trying again."})
+    primary_csv, related_csv = trends.generate_trends_csv(industry)  # Run synchronously
 
-    print(f"🔍 Fetching Google Trends data for: {industry} (running in background)")
+    if primary_csv and related_csv:
+        return jsonify({
+            "message": "Google Trends data fetched successfully!",
+            "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}",
+            "related_trends": f"/download_trends/{os.path.basename(related_csv)}"
+        })
+    else:
+        return jsonify({"error": "Google Trends data fetching failed. Please try again."}), 500
 
-    thread = Thread(target=fetch_trends_in_background, args=(industry,))
-    thread.start()
-
-    return jsonify({"message": "Google Trends data is being fetched in the background. Check again in a minute."})
 
 
 
