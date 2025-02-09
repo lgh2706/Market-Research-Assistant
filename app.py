@@ -4,6 +4,7 @@ import shutil
 import trends
 import analysis
 import report
+import yfinance
 
 app = Flask(__name__, template_folder="templates")
 
@@ -50,6 +51,19 @@ def get_trends():
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     })
 
+
+@app.route('/get_yfinance', methods=['POST'])
+def get_yfinance():
+    industry = request.form['industry']
+    print(f"🔍 Fetching Yahoo Finance data for: {industry}")
+
+    primary_csv, related_csv = yfinance.generate_yfinance_csv(industry)
+
+    return jsonify({
+        "message": "Yahoo Finance data fetched successfully!",
+        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
+        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
+    })
 
 
 @app.route('/download_trends/<filename>')
