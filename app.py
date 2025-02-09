@@ -22,50 +22,33 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
-
-import threading
-
-fetch_status = {}  # Dictionary to track job status
-
-def fetch_trends_in_background(industry):
-    """Runs Google Trends data fetching as a separate thread and updates job status."""
-    global fetch_status
-
-    print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
-    primary_csv, related_csv = trends.generate_trends_csv(industry)
-
-    # ✅ Update job status after completion
-    if primary_csv and related_csv:
-        fetch_status[industry] = "completed"
-        print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
-    else:
-        fetch_status[industry] = "failed"
-        print(f"❌ Google Trends data fetching failed for {industry}")
-
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
+    print(f"🔍 Fetching Google Trends data for: {industry}")
 
-    # ✅ If a job is already running, prevent multiple calls
-    if industry in fetch_status and fetch_status[industry] == "running":
-        return jsonify({"message": "Google Trends data is already being fetched. Please check the status later."})
+    primary_csv, related_csv = trends.generate_trends_csv(industry)
 
-    # ✅ Start the job in the background
-    fetch_status[industry] = "running"
-    thread = threading.Thread(target=fetch_trends_in_background, args=(industry,))
-    thread.start()
+    if primary_csv:
+        print(f"✅ Primary trends CSV generated: {primary_csv}")
+        new_primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
+        shutil.copy(primary_csv, new_primary_csv)
+        print(f"✅ Copied {primary_csv} to {new_primary_csv}")
+    else:
+        print("❌ Primary trends CSV generation failed!")
 
-    return jsonify({"message": "Google Trends data is being fetched. Use /get_trends_status to check progress."})
+    if related_csv:
+        print(f"✅ Related trends CSV generated: {related_csv}")
+        new_related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
+        shutil.copy(related_csv, new_related_csv)
+        print(f"✅ Copied {related_csv} to {new_related_csv}")
+    else:
+        print("❌ Related trends CSV generation failed!")
 
-@app.route('/get_trends_status', methods=['GET'])
-def get_trends_status():
-    industry = request.args.get('industry')
-
-    if industry not in fetch_status:
-        return jsonify({"message": "No trends job found for this industry."})
-
-    return jsonify({"status": fetch_status[industry]})
-
+    return jsonify({
+        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
+        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
+    })
 
 
 
@@ -140,25 +123,4 @@ def download_script(filename):
     return "File Not Found", 404
 
 if __name__ == "__main__":
-    from gunicorn.app.base import BaseApplication
-
-    class GunicornApp(BaseApplication):
-        def __init__(self, app, options=None):
-            self.options = options or {}
-            self.application = app
-            super().__init__()
-
-        def load_config(self):
-            for key, value in self.options.items():
-                self.cfg.set(key, value)
-
-        def load(self):
-            return self.application
-
-    options = {
-        "bind": "0.0.0.0:10000",
-        "timeout": 300,  # ✅ Increase timeout to 300 seconds
-        "workers": 2
-    }
-    GunicornApp(app, options).run()
-
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=True)
