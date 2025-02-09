@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-import yfinance as yf
+import yfinance
 import openai
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,14 +32,14 @@ def fetch_stock_data(stock_symbols):
     """Retrieve stock close price data from Yahoo Finance, with debug logging."""
     print(f"🔍 Fetching Yahoo Finance data for: {stock_symbols}")
 
-    import yfinance as yf  # ✅ Ensure module is imported correctly
+
 
     df_list = []
     for symbol in stock_symbols:
         try:
             print(f"🟢 Fetching data for {symbol}...")  # ✅ Log before fetching
 
-            stock = yf.Ticker(symbol)
+            stock = yfinance.Ticker(symbol)
             hist = stock.history(period="1y")
 
             if hist.empty:
