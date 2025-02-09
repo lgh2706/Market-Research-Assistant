@@ -52,18 +52,34 @@ def get_trends():
     })
 
 
+
+
 @app.route('/get_yfinance', methods=['POST'])
 def get_yfinance():
-    industry = request.form['industry']
-    print(f"🔍 Fetching Yahoo Finance data for: {industry}")
+    """Handles Yahoo Finance data retrieval for the selected focal industry."""
+    focalIndustry = request.form.get('focalIndustry')  # ✅ Use `.get()` to avoid key errors
 
-    primary_csv, related_csv = yfinance.generate_yfinance_csv(industry)
+    if not focalIndustry:
+        return jsonify({"error": "Focal industry is missing from the request."}), 400  # ✅ Error handling
 
-    return jsonify({
-        "message": "Yahoo Finance data fetched successfully!",
-        "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
-        "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
-    })
+    print(f"🔍 Fetching Yahoo Finance data for: {focalIndustry}")
+
+    try:
+        focal_csv, related_csv = yfinance.generate_yfinance_csv(focalIndustry)
+
+        if not focal_csv or not related_csv:
+            return jsonify({"error": "Yahoo Finance data could not be generated."}), 500  # ✅ Error if CSVs not generated
+
+        return jsonify({
+            "message": "Yahoo Finance data fetched successfully!",
+            "focal_trends": f"/download_trends/{os.path.basename(focal_csv)}",
+            "related_trends": f"/download_trends/{os.path.basename(related_csv)}"
+        })
+
+    except Exception as e:
+        print(f"❌ Error in get_yfinance: {e}")
+        return jsonify({"error": "An error occurred while retrieving Yahoo Finance data."}), 500
+
 
 
 @app.route('/download_trends/<filename>')
