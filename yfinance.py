@@ -1,62 +1,90 @@
 import os
 import pandas as pd
 import yfinance as yf
+import openai
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 
-# ✅ Ensure the directory exists
 if not os.path.exists(GENERATED_DIR):
     os.makedirs(GENERATED_DIR)
 
-def get_yahoo_finance_data(industry):
-    """Retrieve financial data from Yahoo Finance ETF/Indexes to represent industry trends."""
-    print(f"🔍 Fetching Yahoo Finance data for industry: {industry}")
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=openai_api_key)
 
-    # ✅ Map industries to relevant stock indexes or ETFs
-    industry_to_etf = {
-        "healthcare": "XLV",  # Health Care Select Sector ETF
-        "pharmaceuticals": "PJP",  # Invesco Pharmaceuticals ETF
-        "technology": "XLK",  # Technology Select Sector ETF
-        "energy": "XLE",  # Energy Select Sector ETF
-        "finance": "XLF"  # Financial Select Sector ETF
-    }
+def get_industry_companies(industry):
+    """Retrieve the top 5 companies for an industry using OpenAI."""
+    prompt = f"""
+    Given the industry "{industry}", list the 5 most relevant publicly traded companies 
+    that best represent this industry. Provide only a comma-separated list of stock ticker symbols.
+    """
+    
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    companies = [c.strip() for c in response.choices[0].message.content.strip().split(",")]
+    print(f"✅ Selected companies for {industry}: {companies}")
+    return companies
 
-    etf_symbol = industry_to_etf.get(industry.lower(), None)
-    if not etf_symbol:
-        print(f"⚠️ No matching ETF found for industry {industry}. Skipping Yahoo Finance data.")
-        return None
+def fetch_stock_data(stock_symbols):
+    """Retrieve stock close price data from Yahoo Finance."""
+    print(f"🔍 Fetching Yahoo Finance data for: {stock_symbols}")
 
-    try:
-        etf = yf.Ticker(etf_symbol)
-        hist = etf.history(period="5y")  # ✅ Keep the same 5-year period
-        if hist.empty:
-            print(f"❌ No data found for ETF {etf_symbol} ({industry})")
-            return None
+    df_list = []
+    for symbol in stock_symbols:
+        try:
+            stock = yf.Ticker(symbol)
+            hist = stock.history(period="1y")  # ✅ Keep the last 1-year period
+            hist = hist[['Close']].rename(columns={'Close': symbol})
+            hist['date'] = hist.index
+            df_list.append(hist)
 
-        hist = hist[['Close']].rename(columns={'Close': industry})  # ✅ Format like Google Trends
-        hist['date'] = hist.index
-        hist.reset_index(drop=True, inplace=True)
+        except Exception as e:
+            print(f"❌ Error fetching data for {symbol}: {e}")
 
-        print(f"✅ Yahoo Finance ETF data retrieved successfully for {industry}")
-        return hist
+    if df_list:
+        merged_df = pd.concat(df_list, axis=1)
+        merged_df.reset_index(drop=True, inplace=True)
+        return merged_df
 
-    except Exception as e:
-        print(f"❌ Error fetching Yahoo Finance data for {industry}: {e}")
-        return None
+    return None
 
-def generate_yfinance_csv(industry):
-    """Generate CSV files for Yahoo Finance data to match Google Trends format."""
-    primary_data = get_yahoo_finance_data(industry)
-    related_data = get_yahoo_finance_data("pharmaceuticals")  # Default related industry
+def generate_yfinance_csv(focalIndustry):
+    """Automatically determines related industry and fetches stock price data for both."""
+    
+    # ✅ Get related industry from OpenAI (same logic as `trends.py`)
+    related_industry_prompt = f"""
+    Given the industry "{focalIndustry}", suggest the most closely related industry in terms of market trends.
+    Provide only one related industry name.
+    """
+    
+    related_industry_response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": related_industry_prompt}]
+    )
+    
+    relatedIndustry = related_industry_response.choices[0].message.content.strip()
+    
+    print(f"✅ Selected Industry: {focalIndustry}")
+    print(f"✅ Related Industry: {relatedIndustry}")
 
-    primary_csv, related_csv = None, None
-    if primary_data is not None:
-        primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Yahoo_Finance.csv")
-        primary_data.to_csv(primary_csv, index=False)
+    # ✅ Fetch the top 5 companies for both industries
+    focal_companies = get_industry_companies(focalIndustry)
+    related_companies = get_industry_companies(relatedIndustry)
+
+    # ✅ Fetch stock data from Yahoo Finance
+    focal_data = fetch_stock_data(focal_companies)
+    related_data = fetch_stock_data(related_companies)
+
+    focal_csv = os.path.join(GENERATED_DIR, f"{focalIndustry}_Yahoo_Finance.csv")
+    related_csv = os.path.join(GENERATED_DIR, f"{relatedIndustry}_Yahoo_Finance.csv")
+
+    if focal_data is not None:
+        focal_data.to_csv(focal_csv, index=False)
 
     if related_data is not None:
-        related_csv = os.path.join(GENERATED_DIR, f"pharmaceuticals_Yahoo_Finance.csv")
         related_data.to_csv(related_csv, index=False)
 
-    return primary_csv, related_csv
+    return focal_csv, related_csv
