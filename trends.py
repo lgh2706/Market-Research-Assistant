@@ -68,34 +68,31 @@ def fetch_google_trends_data(keywords):
         return pd.DataFrame()
 
 def generate_trends_csv(industry):
-    """Generate two CSV files for primary and related industry trends."""
-    primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
+    print(f"🔍 Fetching Google Trends data for industry: {industry}")
+    
+    try:
+        primary_keywords, related_industry, related_keywords = get_industry_keywords(industry)
+        primary_data = fetch_google_trends_data(primary_keywords)
+        related_data = fetch_google_trends_data(related_keywords)
+    except Exception as e:
+        print(f"❌ Error fetching trends data: {e}")
+        return None, None
 
-    primary_data = fetch_google_trends_data(primary_keywords) if primary_keywords else pd.DataFrame()
-    related_data = fetch_google_trends_data(related_keywords) if related_keywords else pd.DataFrame()
-
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-
-    if not primary_data.empty:
+    if primary_data.empty:
+        print("❌ Primary industry trends data is empty!")
+        primary_csv = None
+    else:
         primary_csv = os.path.join(GENERATED_DIR, f"{industry}_Google_Trends.csv")
         primary_data.to_csv(primary_csv, index=False)
-        print(f"✅ Primary Industry CSV Generated: {primary_csv}")
-    else:
-        primary_csv = None
+        print(f"✅ Primary CSV saved: {primary_csv}")
 
-    if not related_data.empty:
+    if related_data.empty:
+        print("❌ Related industry trends data is empty!")
+        related_csv = None
+    else:
         related_csv = os.path.join(GENERATED_DIR, f"{related_industry}_Google_Trends.csv")
         related_data.to_csv(related_csv, index=False)
-        print(f"✅ Related Industry CSV Generated: {related_csv}")
-    else:
-        related_csv = None
-
-    if primary_csv:
-        primary_data.to_csv(primary_csv, index=False)
-    
-    if related_csv:
-        related_data.to_csv(related_csv, index=False)
+        print(f"✅ Related CSV saved: {related_csv}")
 
     return primary_csv, related_csv
+
