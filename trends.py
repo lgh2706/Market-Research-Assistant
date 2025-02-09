@@ -69,11 +69,10 @@ def get_industry_keywords(industry):
 
 
 from pytrends.request import TrendReq
-import yfinance as yf  # ✅ Import Yahoo Finance API
 import time, random
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits and switching to Yahoo Finance if needed."""
+    """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
         print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
@@ -81,41 +80,26 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-    timeframes = ['today 5-y', 'today 4-y', 'today 3-y', 'today 2-y']
-    max_retries = 3  # Maximum retries per timeframe
+    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
-    for timeframe in timeframes:
-        for attempt in range(max_retries):
-            try:
-                wait_time = random.uniform(45, 75)
-                print(f"⏳ Waiting {wait_time:.2f} seconds before request... (Attempt {attempt+1}/{max_retries}, Timeframe: {timeframe})")
-                time.sleep(wait_time)
+    try:
+        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
+        response = pytrends.interest_over_time()
 
-                pytrends.build_payload(keywords, timeframe=timeframe, geo='')
-                response = pytrends.interest_over_time()
+        if response.empty:
+            print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
+            return pd.DataFrame()
 
-                if response.empty:
-                    print(f"❌ Google Trends returned an empty dataset for keywords: {keywords} (Timeframe: {timeframe})")
-                    continue  # Retry with a shorter timeframe
+        print(f"✅ Google Trends data retrieved successfully for {keywords}")
 
-                print(f"✅ Google Trends data retrieved successfully for {keywords} (Timeframe: {timeframe})")
+        if 'isPartial' in response.columns:
+            response = response.drop(columns=['isPartial'])
 
-                if 'isPartial' in response.columns:
-                    response = response.drop(columns=['isPartial'])
+        return response
 
-                return response
-
-            except Exception as e:
-                print(f"❌ Error fetching Google Trends data (Attempt {attempt+1}, Timeframe: {timeframe}): {e}")
-                if attempt < max_retries - 1:
-                    wait_time_retry = random.uniform(30, 60)
-                    print(f"🔁 Retrying in {wait_time_retry:.2f} seconds...")
-                    time.sleep(wait_time_retry)
-
-    print(f"❌ All {max_retries} attempts failed for keywords: {keywords}")
-    print("🔄 Switching to Yahoo Finance as an alternative data source.")
-    return fetch_yahoo_finance_data(keywords)  # ✅ Switch to Yahoo Finance if Google Trends fails
-
+    except Exception as e:
+        print(f"❌ Error fetching Google Trends data: {e}")
+        return pd.DataFrame()
 
 
 
@@ -154,30 +138,5 @@ def generate_trends_csv(industry):
         print(f"✅ Related CSV saved: {related_csv}")
 
     return primary_csv, related_csv
-
-def fetch_yahoo_finance_data(keywords):
-    """Retrieve alternative financial trend data from Yahoo Finance."""
-    print(f"🔍 Fetching Yahoo Finance data for: {keywords}")
-
-    df_list = []
-    for keyword in keywords:
-        try:
-            stock = yf.Ticker(keyword)
-            hist = stock.history(period="5y")  # ✅ Use same 5-year period
-            hist = hist[['Close']].rename(columns={'Close': keyword})  # ✅ Keep format similar to Google Trends
-            hist['date'] = hist.index
-            df_list.append(hist)
-            print(f"✅ Yahoo Finance data retrieved for {keyword}")
-
-        except Exception as e:
-            print(f"❌ Error fetching Yahoo Finance data for {keyword}: {e}")
-
-    if df_list:
-        merged_df = pd.concat(df_list, axis=1)
-        merged_df.reset_index(drop=True, inplace=True)
-        return merged_df
-
-    print("❌ Yahoo Finance data fetch failed completely.")
-    return pd.DataFrame()
 
 
