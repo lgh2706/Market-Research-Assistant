@@ -79,6 +79,7 @@
         
         <button type="button" class="btn-report" onclick="generateReport()">Industry Report</button>
         <button type="button" class="btn-trends" onclick="getTrends()">Get Google Trends</button>
+        <button type="button" class="btn-yfinance" onclick="getYFinance()">Get Yahoo Finance Data</button>
 
         <br><br>
         <label for="modelType">Select Model Type:</label><br>
@@ -166,6 +167,44 @@
                 hideLoading();
                 console.error("Error fetching Google Trends:", error);
                 alert("Failed to retrieve Google Trends data.");
+            });
+        }
+        function getYFinance() {
+            let industry = document.getElementById("industry").value;
+            if (!industry) {
+                alert("Please enter an industry name!");
+                return;
+            }
+
+            showLoading();
+            let yfinanceButton = document.querySelector(".btn-yfinance");
+            yfinanceButton.disabled = true;
+
+            fetch("/get_yfinance", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `industry=${encodeURIComponent(industry)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+            hideLoading();
+            yfinanceButton.disabled = false;
+
+            let resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = `<p>${data.message}</p>`;
+
+            if (data.primary_trends) {
+                resultDiv.innerHTML += `<p><a href="${data.primary_trends}" download>Download Primary Industry Trends CSV</a></p>`;
+            }
+            if (data.related_trends) {
+                resultDiv.innerHTML += `<p><a href="${data.related_trends}" download>Download Related Industry Trends CSV</a></p>`;
+            }
+            })
+            .catch(error => {
+            hideLoading();
+            yfinanceButton.disabled = false;
+            console.error("Error fetching Yahoo Finance Data:", error);
+            alert("Failed to retrieve Yahoo Finance data.");
             });
         }
 
