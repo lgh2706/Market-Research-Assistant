@@ -12,21 +12,35 @@ if not os.path.exists(GENERATED_DIR):
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
 
-def get_industry_companies(industry):
-    """Retrieve the top 5 companies for an industry using OpenAI."""
+def get_industry_companies(industry, exclude_companies=[]):
+    """Retrieve the top 5 companies for an industry using OpenAI, ensuring no duplicates."""
     prompt = f"""
     Given the industry "{industry}", list the 5 most relevant publicly traded companies 
     that best represent this industry. Provide only a comma-separated list of stock ticker symbols.
     """
-    
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    companies = [c.strip() for c in response.choices[0].message.content.strip().split(",")]
-    print(f"✅ Selected companies for {industry}: {companies}")
-    return companies
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        companies = [c.strip() for c in response.choices[0].message.content.strip().split(",")]
+
+        # ✅ Remove duplicates from the focal industry
+        unique_companies = [c for c in companies if c not in exclude_companies]
+
+        # ✅ Ensure exactly 5 companies are selected
+        if len(unique_companies) < 5:
+            print(f"⚠️ Warning: Only {len(unique_companies)} unique companies found for {industry}.")
+        
+        print(f"✅ Selected companies for {industry}: {unique_companies[:5]}")
+        return unique_companies[:5]
+
+    except Exception as e:
+        print(f"❌ OpenAI API error in get_industry_companies({industry}): {e}")
+        return []
+
 
 def fetch_stock_data(stock_symbols):
     """Retrieve stock close price data from Yahoo Finance, with debug logging."""
@@ -65,39 +79,47 @@ def fetch_stock_data(stock_symbols):
 
 
 def generate_yfinance_csv(focalIndustry):
-    """Automatically determines related industry and fetches stock price data for both."""
+    """Automatically determines related industry and fetches stock price data for both, ensuring unique companies."""
     
-    # ✅ Get related industry from OpenAI (same logic as `trends.py`)
-    related_industry_prompt = f"""
-    Given the industry "{focalIndustry}", suggest the most closely related industry in terms of market trends.
-    Provide only one related industry name.
-    """
-    
-    related_industry_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": related_industry_prompt}]
-    )
-    
-    relatedIndustry = related_industry_response.choices[0].message.content.strip()
-    
-    print(f"✅ Selected Industry: {focalIndustry}")
-    print(f"✅ Related Industry: {relatedIndustry}")
+    try:
+        # ✅ Get related industry from OpenAI
+        related_industry_prompt = f"""
+        Given the industry "{focalIndustry}", suggest the most closely related industry in terms of market trends.
+        Provide only one related industry name.
+        """
 
-    # ✅ Fetch the top 5 companies for both industries
-    focal_companies = get_industry_companies(focalIndustry)
-    related_companies = get_industry_companies(relatedIndustry)
+        related_industry_response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": related_industry_prompt}]
+        )
 
-    # ✅ Fetch stock data from Yahoo Finance
-    focal_data = fetch_stock_data(focal_companies)
-    related_data = fetch_stock_data(related_companies)
+        relatedIndustry = related_industry_response.choices[0].message.content.strip()
+        print(f"✅ Selected Focal Industry: {focalIndustry}")
+        print(f"✅ Determined Related Industry: {relatedIndustry}")
 
-    focal_csv = os.path.join(GENERATED_DIR, f"{focalIndustry}_Yahoo_Finance.csv")
-    related_csv = os.path.join(GENERATED_DIR, f"{relatedIndustry}_Yahoo_Finance.csv")
+        # ✅ Fetch the top 5 unique companies for both industries
+        focal_companies = get_industry_companies(focalIndustry)
+        related_companies = get_industry_companies(relatedIndustry, exclude_companies=focal_companies)
 
-    if focal_data is not None:
-        focal_data.to_csv(focal_csv, index=False)
+        if not focal_companies or not related_companies:
+            print("❌ Error: Could not retrieve company lists.")
+            return None, None  # ✅ Handle error case
 
-    if related_data is not None:
-        related_data.to_csv(related_csv, index=False)
+        # ✅ Fetch stock data
+        focal_data = fetch_stock_data(focal_companies)
+        related_data = fetch_stock_data(related_companies)
 
-    return focal_csv, related_csv
+        focal_csv = os.path.join(GENERATED_DIR, f"{focalIndustry}_Yahoo_Finance.csv")
+        related_csv = os.path.join(GENERATED_DIR, f"{relatedIndustry}_Yahoo_Finance.csv")
+
+        if focal_data is not None:
+            focal_data.to_csv(focal_csv, index=False)
+
+        if related_data is not None:
+            related_data.to_csv(related_csv, index=False)
+
+        return focal_csv, related_csv
+
+    except Exception as e:
+        print(f"❌ Error in generate_yfinance_csv: {e}")
+        return None, None
