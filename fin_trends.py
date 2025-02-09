@@ -13,7 +13,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
 
 def get_industry_companies(industry, exclude_companies=[]):
-    """Retrieve the top 5 companies for an industry using OpenAI, ensuring no duplicates."""
+    """Retrieve the top 5 companies for an industry using OpenAI, ensuring uniqueness."""
     prompt = f"""
     Given the industry "{industry}", list the 5 most relevant publicly traded companies 
     that best represent this industry. Provide only a comma-separated list of stock ticker symbols.
@@ -28,18 +28,25 @@ def get_industry_companies(industry, exclude_companies=[]):
         companies = [c.strip() for c in response.choices[0].message.content.strip().split(",")]
 
         # ✅ Remove duplicates from the focal industry
-        unique_companies = [c for c in companies if c not in exclude_companies]
+        unique_companies = list(set(companies) - set(exclude_companies))
 
-        # ✅ Ensure exactly 5 companies are selected
-        if len(unique_companies) < 5:
-            print(f"⚠️ Warning: Only {len(unique_companies)} unique companies found for {industry}.")
-        
-        print(f"✅ Selected companies for {industry}: {unique_companies[:5]}")
-        return unique_companies[:5]
+        # ✅ If we don't have enough unique companies, ask OpenAI again
+        while len(unique_companies) < 5:
+            print(f"⚠️ Warning: Only {len(unique_companies)} unique companies found for {industry}. Fetching more...")
+            new_response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            new_companies = [c.strip() for c in new_response.choices[0].message.content.strip().split(",")]
+            unique_companies = list(set(unique_companies + new_companies) - set(exclude_companies))[:5]
+
+        print(f"✅ Final selected companies for {industry}: {unique_companies}")
+        return unique_companies
 
     except Exception as e:
         print(f"❌ OpenAI API error in get_industry_companies({industry}): {e}")
         return []
+
 
 
 def fetch_stock_data(stock_symbols):
