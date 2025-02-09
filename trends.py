@@ -83,7 +83,7 @@ def fetch_google_trends_data(keywords):
     time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
     try:
-        pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')
+        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
         response = pytrends.interest_over_time()
 
         if response.empty:
@@ -100,6 +100,7 @@ def fetch_google_trends_data(keywords):
     except Exception as e:
         print(f"❌ Error fetching Google Trends data: {e}")
         return pd.DataFrame()
+
 
 
 
