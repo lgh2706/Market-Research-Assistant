@@ -27,10 +27,15 @@ def generate_report_route():
 from threading import Thread
 
 def fetch_trends_in_background(industry):
-    """Run Google Trends fetching in a separate thread to prevent timeouts."""
-    print(f"🚀 Starting background thread for Google Trends data fetching...")
+    """Runs Google Trends data fetching as a separate thread to avoid request timeouts."""
+    print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
     primary_csv, related_csv = trends.generate_trends_csv(industry)
-    print(f"✅ Background job completed: {primary_csv}, {related_csv}")
+    
+    # ✅ Log when background job is finished
+    if primary_csv and related_csv:
+        print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
+    else:
+        print(f"❌ Google Trends data fetching failed for {industry}")
 
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
