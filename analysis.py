@@ -41,7 +41,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     print("🚀 Preparing training data...")
     target = primary_df.columns[1]  # First feature column as target variable (y)
-    features = related_df.columns[1:]  # Use all columns from related dataset as predictors (X)
+    features = [col for col in related_df.columns if col != "date"]  # Exclude "date" column from predictors
 
     if len(features) == 0:
         print("❌ Not enough predictor variables.")
@@ -50,9 +50,9 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    # ✅ Feature Selection: Keep only strongly correlated features for Linear Regression
+    # ✅ Feature Selection for Linear Regression
     if model_type == "linear_regression":
-        correlation_matrix = merged_df.corr()
+        correlation_matrix = merged_df.corr(numeric_only=True)  # Ensure only numerical values
         strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
         strong_features = strong_features[strong_features > 0.5].index.tolist()
         if target in strong_features:
@@ -132,3 +132,4 @@ print(f"R² Score: {{r2:.4f}}")
     print(f"💾 Script saved to: {script_filename}")
 
     return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
+
