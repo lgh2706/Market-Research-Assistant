@@ -72,7 +72,7 @@ from pytrends.request import TrendReq
 import time, random
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits."""
+    """Retrieve Google Trends data while handling API rate limits and avoiding request failures."""
     if not keywords:
         print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
@@ -81,35 +81,37 @@ def fetch_google_trends_data(keywords):
 
     pytrends = TrendReq(hl='en-US', tz=360)
 
-    # ✅ Increase the wait time to reduce API rate limit errors
-    wait_time = random.uniform(15, 30)  # Wait between 15-30 seconds
-    print(f"⏳ Waiting {wait_time:.2f} seconds before request...")
-    time.sleep(wait_time)
+    max_retries = 3  # Retry up to 3 times if request fails
+    for attempt in range(max_retries):
+        try:
+            wait_time = random.uniform(45, 60)  # ✅ Increase wait time to 45-60 seconds
+            print(f"⏳ Waiting {wait_time:.2f} seconds before request... (Attempt {attempt+1}/{max_retries})")
+            time.sleep(wait_time)
 
-    try:
-        # ✅ Fetch only the first 5 keywords per request to avoid overloading Google
-        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')
+            pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
 
-        response = pytrends.interest_over_time()
+            response = pytrends.interest_over_time()
 
-        if response.empty:
-            print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
-            return pd.DataFrame()
+            if response.empty:
+                print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
+                return pd.DataFrame()
 
-        print(f"✅ Google Trends data retrieved successfully for {keywords}")
+            print(f"✅ Google Trends data retrieved successfully for {keywords}")
 
-        if 'isPartial' in response.columns:
-            response = response.drop(columns=['isPartial'])
+            if 'isPartial' in response.columns:
+                response = response.drop(columns=['isPartial'])
 
-        return response
+            return response
 
-    except Exception as e:
-        print(f"❌ Error fetching Google Trends data: {e}")
-        return pd.DataFrame()
+        except Exception as e:
+            print(f"❌ Error fetching Google Trends data (Attempt {attempt+1}): {e}")
+            if attempt < max_retries - 1:
+                wait_time_retry = random.uniform(30, 45)
+                print(f"🔁 Retrying in {wait_time_retry:.2f} seconds...")
+                time.sleep(wait_time_retry)
 
-    except Exception as e:
-        print(f"❌ Error fetching Google Trends data: {e}")
-        return pd.DataFrame()
+    print(f"❌ All {max_retries} attempts failed for keywords: {keywords}")
+    return pd.DataFrame()
 
 
 
