@@ -24,12 +24,24 @@ def generate_report_route():
     pdf_file = report.generate_industry_report(industry)
     return send_file(pdf_file, as_attachment=True) if pdf_file else "No data available."
 
+from threading import Thread
+
+def fetch_trends_in_background(industry):
+    """Run Google Trends fetching in a separate thread to prevent timeouts."""
+    print(f"🚀 Starting background thread for Google Trends data fetching...")
+    primary_csv, related_csv = trends.generate_trends_csv(industry)
+    print(f"✅ Background job completed: {primary_csv}, {related_csv}")
+
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
-    print(f"🔍 Fetching Google Trends data for: {industry}")
+    print(f"🔍 Fetching Google Trends data for: {industry} (in background)")
 
-    primary_csv, related_csv = trends.generate_trends_csv(industry)
+    thread = Thread(target=fetch_trends_in_background, args=(industry,))
+    thread.start()
+
+    return jsonify({"message": "Google Trends data is being fetched in the background. Try again in a minute."})
+
 
     if primary_csv:
         print(f"✅ Primary trends CSV generated: {primary_csv}")
