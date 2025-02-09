@@ -62,6 +62,9 @@ def get_industry_keywords(industry):
 
     return primary_keywords, related_industry, related_keywords
 
+from pytrends.request import TrendReq
+import time, random
+
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
@@ -91,6 +94,7 @@ def fetch_google_trends_data(keywords):
     except Exception as e:
         print(f"❌ Error fetching Google Trends data: {e}")
         return pd.DataFrame()
+
 
 
 def generate_trends_csv(industry):
