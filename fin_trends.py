@@ -53,7 +53,7 @@ def fetch_stock_data(stock_symbols):
         try:
             print(f"🟢 Fetching data for {symbol}...")  # ✅ Log before fetching
 
-            stock = yf.Ticker(symbol)
+            stock = yfinance.Ticker(symbol)
             hist = stock.history(period="1y")
 
             if hist.empty:
