@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_file, send_from_directory, jsonify
 import os
+import shutil
 import trends
 import analysis
 import report
@@ -28,15 +29,13 @@ def get_trends():
 
     if primary_csv and os.path.exists(primary_csv):
         new_primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
-        os.rename(primary_csv, new_primary_csv)
-        print(f"✅ Renamed {primary_csv} to {new_primary_csv}")
-        primary_csv = new_primary_csv
+        shutil.copy(primary_csv, new_primary_csv)  # Make a copy instead of renaming
+        print(f"✅ Copied {primary_csv} to {new_primary_csv}")
 
     if related_csv and os.path.exists(related_csv):
         new_related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
-        os.rename(related_csv, new_related_csv)
-        print(f"✅ Renamed {related_csv} to {new_related_csv}")
-        related_csv = new_related_csv
+        shutil.copy(related_csv, new_related_csv)  # Make a copy instead of renaming
+        print(f"✅ Copied {related_csv} to {new_related_csv}")
 
     return jsonify({
         "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
