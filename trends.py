@@ -69,10 +69,11 @@ def get_industry_keywords(industry):
 
 
 from pytrends.request import TrendReq
+import yfinance as yf
 import time, random
 
 def fetch_google_trends_data(keywords):
-    """Retrieve Google Trends data while handling API rate limits."""
+    """Retrieve Google Trends data while handling API rate limits and switching to Yahoo Finance if needed."""
     if not keywords:
         print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
@@ -80,15 +81,18 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
 
     try:
-        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
+        wait_time = random.uniform(30, 45)  # Wait before request to prevent rate limit
+        print(f"⏳ Waiting {wait_time:.2f} seconds before request...")
+        time.sleep(wait_time)
+
+        pytrends.build_payload(keywords, timeframe='today 5-y', geo='')
         response = pytrends.interest_over_time()
 
         if response.empty:
             print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
-            return pd.DataFrame()
+            return fetch_yahoo_finance_data(keywords)  # ✅ Switch to Yahoo Finance if Google fails
 
         print(f"✅ Google Trends data retrieved successfully for {keywords}")
 
@@ -98,8 +102,9 @@ def fetch_google_trends_data(keywords):
         return response
 
     except Exception as e:
-        print(f"❌ Error fetching Google Trends data: {e}")
-        return pd.DataFrame()
+        print(f"❌ Google Trends API failed: {e}")
+        return fetch_yahoo_finance_data(keywords)  # ✅ Switch to Yahoo Finance if Google fails
+
 
 
 
