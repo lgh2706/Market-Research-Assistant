@@ -57,7 +57,10 @@ def get_industry_keywords(industry):
 def fetch_google_trends_data(keywords):
     """Retrieve Google Trends data while handling API rate limits."""
     if not keywords:
+        print("❌ No keywords provided for Google Trends fetch.")
         return pd.DataFrame()
+
+    print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
     time.sleep(random.uniform(5, 10))  # Prevent rate limiting
@@ -65,17 +68,22 @@ def fetch_google_trends_data(keywords):
     try:
         pytrends.build_payload(keywords[:5], timeframe='today 12-m', geo='')
         response = pytrends.interest_over_time()
-        
+
         if response.empty:
+            print(f"❌ Google Trends returned an empty dataset for keywords: {keywords}")
             return pd.DataFrame()
-        
+
+        print(f"✅ Google Trends data retrieved successfully for {keywords}")
+
         if 'isPartial' in response.columns:
             response = response.drop(columns=['isPartial'])
 
         return response
 
     except Exception as e:
+        print(f"❌ Error fetching Google Trends data: {e}")
         return pd.DataFrame()
+
 
 def generate_trends_csv(industry):
     print(f"🔍 Fetching Google Trends data for industry: {industry}")
