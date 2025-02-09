@@ -5,10 +5,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Dropout
 
 # Disable GPU to prevent TensorFlow errors on Render
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -38,9 +39,9 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         print("❌ Merged dataset is empty.")
         return None, None, "Merged dataset is empty."
 
-    print("🚀 Training model...")
-    target = primary_df.columns[1]
-    features = related_df.columns[1:]
+    print("🚀 Preparing training data...")
+    target = primary_df.columns[1]  # First feature column as target variable (y)
+    features = related_df.columns[1:]  # Use all columns from related dataset as predictors (X)
 
     if len(features) == 0:
         print("❌ Not enough predictor variables.")
@@ -49,25 +50,50 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # ✅ Feature Selection: Keep only strongly correlated features for Linear Regression
+    if model_type == "linear_regression":
+        correlation_matrix = merged_df.corr()
+        strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
+        strong_features = strong_features[strong_features > 0.5].index.tolist()
+        if target in strong_features:
+            strong_features.remove(target)  # Remove target from predictor list
+        if len(strong_features) == 0:
+            print("❌ No strongly correlated features found!")
+            return None, None, "No strongly correlated features found for Linear Regression."
+        X = merged_df[strong_features]
+        print(f"📊 Selected features for Linear Regression: {strong_features}")
 
+    # ✅ Normalize features for Neural Network
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Train-Test Split
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled if model_type == "neural_network" else X, y, test_size=0.2, random_state=42)
+
+    print(f"🏋️ Training model: {model_type}...")
+
+    # ✅ Model Selection with Optimized Parameters
     if model_type == "linear_regression":
         model = LinearRegression()
+    
     elif model_type == "random_forest":
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model = RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42)
+    
     elif model_type == "neural_network":
         model = Sequential([
-            Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-            Dense(64, activation='relu'),
+            Dense(32, activation='relu', input_shape=(X_train.shape[1],)),
+            Dropout(0.2),  # Prevents overfitting
+            Dense(32, activation='relu'),
+            Dropout(0.2),
             Dense(1)
         ])
         model.compile(optimizer='adam', loss='mse')
-        model.fit(X_train, y_train, epochs=50, verbose=0)
+        model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=0)
+
     else:
         print("❌ Invalid model type selected.")
         return None, None, "Invalid model type selected."
 
-    print("🏋️‍♂️ Training model...")
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
