@@ -15,13 +15,31 @@ if not os.path.exists(GENERATED_DIR):
 else:
     print(f"✅ Directory already exists: {GENERATED_DIR}")
 
+import openai
+
 def get_industry_keywords(industry):
-    """Fetch industry-specific keywords dynamically using OpenAI."""
+    """Retrieve stable, high-impact keywords for the selected industry."""
 
     openai_api_key = os.getenv("OPENAI_API_KEY")
     client = openai.OpenAI(api_key=openai_api_key)
 
-    # ✅ Find a better related industry
+    # ✅ Step 1: Fetch a fixed set of **most relevant** keywords for the industry
+    master_keyword_prompt = f"""
+    Generate a list of 10 high-impact, commonly used Google Trends keywords for the "{industry}" industry.
+    These should be keywords that have consistently shown up in Google Trends in the past year.
+    Provide only a comma-separated list of keywords.
+    """
+    master_keywords_response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": master_keyword_prompt}]
+    )
+    master_keywords = [kw.strip() for kw in master_keywords_response.choices[0].message.content.strip().split(",")]
+
+    # ✅ Step 2: Select the **top 5 most frequently appearing** keywords in Google Trends
+    print(f"📊 Master Keyword List for {industry}: {master_keywords}")
+    primary_keywords = master_keywords[:5]  # Pick first 5 for primary industry
+
+    # ✅ Step 3: Get the **best related industry**
     related_industry_prompt = f"""
     Given the industry "{industry}", suggest the most closely related industry in terms of market trends.
     Provide only one related industry name.
@@ -32,35 +50,23 @@ def get_industry_keywords(industry):
     )
     related_industry = related_industry_response.choices[0].message.content.strip()
 
-    # ✅ Fetch the **most relevant** 5 keywords for the **focal industry**
-    primary_keywords_prompt = f"""
-    Generate exactly 5 high-impact industry-specific keywords for "{industry}".
-    Ensure these keywords are meaningful, trending, and useful for Google Trends analysis.
-    Provide only a comma-separated list of keywords.
-    """
-    primary_keywords_response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": primary_keywords_prompt}]
-    )
-    primary_keywords = [kw.strip() for kw in primary_keywords_response.choices[0].message.content.strip().split(",")]
-
-    # ✅ Fetch 5 **different** keywords for the related industry
+    # ✅ Step 4: Fetch a different set of **top 5 keywords for the related industry**
     related_keywords_prompt = f"""
-    Generate exactly 5 industry-specific keywords for "{related_industry}".
-    Ensure these keywords are distinct from those of "{industry}" but still relevant for trend comparison.
+    Generate a list of 10 high-impact keywords for the "{related_industry}" industry.
+    These keywords should be different from those in "{industry}" while still being relevant.
     Provide only a comma-separated list of keywords.
     """
     related_keywords_response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": related_keywords_prompt}]
     )
-    related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")]
+    related_keywords = [kw.strip() for kw in related_keywords_response.choices[0].message.content.strip().split(",")][:5]
 
-    print(f"✅ Selected related industry: {related_industry}")
-    print(f"📊 Primary keywords: {primary_keywords}")
-    print(f"📊 Related keywords: {related_keywords}")
+    print(f"✅ Selected Industry: {industry} → Keywords: {primary_keywords}")
+    print(f"✅ Related Industry: {related_industry} → Keywords: {related_keywords}")
 
     return primary_keywords, related_industry, related_keywords
+
 
 from pytrends.request import TrendReq
 import time, random
