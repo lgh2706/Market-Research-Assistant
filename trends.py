@@ -5,6 +5,11 @@ from pytrends.request import TrendReq
 import time
 import random
 
+# Ensure writable directory exists for storing generated files
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
+os.makedirs(GENERATED_DIR, exist_ok=True)  # Create the directory if it doesn't exist
+
 def get_industry_keywords(industry):
     """Fetch industry-specific keywords dynamically using OpenAI."""
     openai_api_key = os.getenv("OPENAI_API_KEY")
