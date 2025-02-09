@@ -6,3 +6,4 @@ pytrends
 fpdf
 pandas
 scikit-learn
+yfinance
