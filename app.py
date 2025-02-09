@@ -27,21 +27,21 @@ def generate_report_route():
 from threading import Thread, Lock
 
 fetch_lock = Lock()
-is_fetching = False  # ✅ Global flag to track if a job is already running
+is_fetching = False
 
 def fetch_trends_in_background(industry):
-    """Runs Google Trends data fetching as a separate thread to avoid request timeouts."""
+    """Ensures only one Google Trends request runs at a time to prevent rate limiting."""
     global is_fetching
     with fetch_lock:
         if is_fetching:
-            print(f"⚠️ A Google Trends data fetching job is already running for {industry}. Ignoring duplicate request.")
+            print(f"⚠️ A Google Trends job is already running for {industry}. Ignoring duplicate request.")
             return
-        is_fetching = True
+        is_fetching = True  # ✅ Lock the job to prevent duplicates
 
     print(f"🚀 Background job started for Google Trends data fetching ({industry})...")
     primary_csv, related_csv = trends.generate_trends_csv(industry)
     
-    # ✅ Log when background job is finished
+    # ✅ Unlock job after completion
     with fetch_lock:
         is_fetching = False
 
@@ -49,6 +49,7 @@ def fetch_trends_in_background(industry):
         print(f"✅ Google Trends data fetching completed successfully! Files: {primary_csv}, {related_csv}")
     else:
         print(f"❌ Google Trends data fetching failed for {industry}")
+
 
 
 @app.route('/get_trends', methods=['POST'])
