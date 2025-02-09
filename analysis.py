@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 
 # Disable GPU to prevent TensorFlow errors on Render
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -50,11 +50,11 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    # ✅ Feature Selection for Linear Regression
+    # ✅ Feature Selection for Linear Regression: Keep only strong predictors (correlation > 0.6)
     if model_type == "linear_regression":
-        correlation_matrix = merged_df.corr(numeric_only=True)  # Ensure only numerical values
+        correlation_matrix = merged_df.corr(numeric_only=True)
         strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
-        strong_features = strong_features[strong_features > 0.5].index.tolist()
+        strong_features = strong_features[strong_features > 0.6].index.tolist()
         if target in strong_features:
             strong_features.remove(target)  # Remove target from predictor list
         if len(strong_features) == 0:
@@ -77,18 +77,19 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         model = LinearRegression()
     
     elif model_type == "random_forest":
-        model = RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42)
+        model = RandomForestRegressor(n_estimators=100, max_depth=10, min_samples_split=4, random_state=42)
     
     elif model_type == "neural_network":
         model = Sequential([
-            Dense(32, activation='relu', input_shape=(X_train.shape[1],)),
-            Dropout(0.2),  # Prevents overfitting
-            Dense(32, activation='relu'),
-            Dropout(0.2),
+            Dense(16, activation='relu', input_shape=(X_train.shape[1],)),
+            BatchNormalization(),  # Normalize activations
+            Dropout(0.3),  # Prevents overfitting
+            Dense(16, activation='relu'),
+            Dropout(0.3),
             Dense(1)
         ])
         model.compile(optimizer='adam', loss='mse')
-        model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=0)
+        model.fit(X_train, y_train, epochs=150, batch_size=8, verbose=0)
 
     else:
         print("❌ Invalid model type selected.")
@@ -132,4 +133,3 @@ print(f"R² Score: {{r2:.4f}}")
     print(f"💾 Script saved to: {script_filename}")
 
     return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
-
