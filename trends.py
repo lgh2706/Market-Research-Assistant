@@ -144,4 +144,28 @@ def generate_trends_csv(industry):
 
     return primary_csv, related_csv
 
+def fetch_yahoo_finance_data(keywords):
+    """Retrieve alternative financial trend data from Yahoo Finance."""
+    print(f"🔍 Fetching Yahoo Finance data for: {keywords}")
+
+    df_list = []
+    for keyword in keywords:
+        try:
+            stock = yf.Ticker(keyword)
+            hist = stock.history(period="5y")  # ✅ Use same 5-year period
+            hist = hist[['Close']].rename(columns={'Close': keyword})  # ✅ Keep format similar to Google Trends
+            hist['date'] = hist.index
+            df_list.append(hist)
+            print(f"✅ Yahoo Finance data retrieved for {keyword}")
+
+        except Exception as e:
+            print(f"❌ Error fetching Yahoo Finance data for {keyword}: {e}")
+
+    if df_list:
+        merged_df = pd.concat(df_list, axis=1)
+        merged_df.reset_index(drop=True, inplace=True)
+        return merged_df
+
+    print("❌ Yahoo Finance data fetch failed completely.")
+    return pd.DataFrame()
 
