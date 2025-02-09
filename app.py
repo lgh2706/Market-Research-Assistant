@@ -40,12 +40,13 @@ def fetch_trends_in_background(industry):
 @app.route('/get_trends', methods=['POST'])
 def get_trends():
     industry = request.form['industry']
-    print(f"🔍 Fetching Google Trends data for: {industry} (in background)")
+    print(f"🔍 Fetching Google Trends data for: {industry} (running in background)")
 
     thread = Thread(target=fetch_trends_in_background, args=(industry,))
     thread.start()
 
-    return jsonify({"message": "Google Trends data is being fetched in the background. Try again in a minute."})
+    return jsonify({"message": "Google Trends data is being fetched in the background. Check again in 1-2 minutes."})
+
 
 
     if primary_csv:
