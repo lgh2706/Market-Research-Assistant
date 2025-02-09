@@ -28,27 +28,17 @@ def get_trends():
     print(f"🔍 Fetching Google Trends data for: {industry}")
 
     primary_csv, related_csv = trends.generate_trends_csv(industry)
+    message = "Google Trends data fetched successfully!"
 
-    if primary_csv:
-        print(f"✅ Primary trends CSV generated: {primary_csv}")
-        new_primary_csv = os.path.join(GENERATED_DIR, "uploaded_primary.csv")
-        shutil.copy(primary_csv, new_primary_csv)
-        print(f"✅ Copied {primary_csv} to {new_primary_csv}")
-    else:
-        print("❌ Primary trends CSV generation failed!")
-
-    if related_csv:
-        print(f"✅ Related trends CSV generated: {related_csv}")
-        new_related_csv = os.path.join(GENERATED_DIR, "uploaded_related.csv")
-        shutil.copy(related_csv, new_related_csv)
-        print(f"✅ Copied {related_csv} to {new_related_csv}")
-    else:
-        print("❌ Related trends CSV generation failed!")
+    if primary_csv and "yahoo_finance" in primary_csv:
+        message = "Google Trends data was unavailable. Using Yahoo Finance as an alternative."
 
     return jsonify({
+        "message": message,
         "primary_trends": f"/download_trends/{os.path.basename(primary_csv)}" if primary_csv else None,
         "related_trends": f"/download_trends/{os.path.basename(related_csv)}" if related_csv else None
     })
+
 
 
 
