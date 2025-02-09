@@ -29,17 +29,28 @@ def get_industry_companies(industry):
     return companies
 
 def fetch_stock_data(stock_symbols):
-    """Retrieve stock close price data from Yahoo Finance."""
+    """Retrieve stock close price data from Yahoo Finance, with debug logging."""
     print(f"🔍 Fetching Yahoo Finance data for: {stock_symbols}")
+
+    import yfinance as yf  # ✅ Ensure module is imported correctly
 
     df_list = []
     for symbol in stock_symbols:
         try:
+            print(f"🟢 Fetching data for {symbol}...")  # ✅ Log before fetching
+
             stock = yf.Ticker(symbol)
-            hist = stock.history(period="1y")  # ✅ Keep the last 1-year period
+            hist = stock.history(period="1y")
+
+            if hist.empty:
+                print(f"⚠️ No data found for {symbol}.")
+                continue  # ✅ Skip this stock if no data
+
             hist = hist[['Close']].rename(columns={'Close': symbol})
             hist['date'] = hist.index
             df_list.append(hist)
+
+            print(f"✅ Data retrieved for {symbol}")
 
         except Exception as e:
             print(f"❌ Error fetching data for {symbol}: {e}")
@@ -49,7 +60,9 @@ def fetch_stock_data(stock_symbols):
         merged_df.reset_index(drop=True, inplace=True)
         return merged_df
 
+    print("❌ No stock data retrieved.")
     return None
+
 
 def generate_yfinance_csv(focalIndustry):
     """Automatically determines related industry and fetches stock price data for both."""
