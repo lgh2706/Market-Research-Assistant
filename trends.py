@@ -80,10 +80,16 @@ def fetch_google_trends_data(keywords):
     print(f"🔍 Fetching Google Trends for keywords: {keywords}")
 
     pytrends = TrendReq(hl='en-US', tz=360)
-    time.sleep(random.uniform(5, 10))  # Prevent rate limiting
+
+    # ✅ Increase the wait time to reduce API rate limit errors
+    wait_time = random.uniform(15, 30)  # Wait between 15-30 seconds
+    print(f"⏳ Waiting {wait_time:.2f} seconds before request...")
+    time.sleep(wait_time)
 
     try:
-        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')  # ✅ Increased to 5 years
+        # ✅ Fetch only the first 5 keywords per request to avoid overloading Google
+        pytrends.build_payload(keywords[:5], timeframe='today 5-y', geo='')
+
         response = pytrends.interest_over_time()
 
         if response.empty:
@@ -96,6 +102,10 @@ def fetch_google_trends_data(keywords):
             response = response.drop(columns=['isPartial'])
 
         return response
+
+    except Exception as e:
+        print(f"❌ Error fetching Google Trends data: {e}")
+        return pd.DataFrame()
 
     except Exception as e:
         print(f"❌ Error fetching Google Trends data: {e}")
