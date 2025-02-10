@@ -3,12 +3,10 @@ import pandas as pd
 import joblib
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.metrics import mean_squared_error, r2_score
-import pmdarima as pm  # Auto ARIMA
-from statsmodels.tsa.stattools import adfuller  # ADF test for stationarity
 
 # Disable GPU (Not needed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -24,28 +22,6 @@ def add_time_lags(df, target_col, lags=7):
         df[f"{target_col}_lag{lag}"] = df[target_col].shift(lag)
     df.dropna(inplace=True)  # Remove rows with NaN values
     return df
-
-def check_stationarity(series):
-    """Perform Augmented Dickey-Fuller (ADF) test for stationarity."""
-    result = adfuller(series.dropna())  # Drop NaN values
-    p_value = result[1]
-    
-    if p_value > 0.05:
-        print(f"⚠️ Warning: Data is NOT stationary (p={p_value:.4f}). Differencing is needed.")
-    else:
-        print(f"✅ Data is stationary (p={p_value:.4f}). No differencing required.")
-
-    return p_value <= 0.05  # Return True if stationary
-
-def optimize_arima(y):
-    """Automatically selects the best (p,d,q) values for ARIMA."""
-    print("🔍 Optimizing ARIMA order...")
-    
-    auto_arima_model = pm.auto_arima(
-        y, seasonal=False, stepwise=True, suppress_warnings=True, trace=True
-    )
-    
-    return auto_arima_model.order  # Returns (p,d,q)
 
 def train_predictive_model(primary_csv, related_csv, model_type="linear_regression"):
     """Trains a predictive model using supervised learning with time-lagged features and cross-validation."""
@@ -69,7 +45,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     # ✅ Apply time-lagging
     merged_df = add_time_lags(merged_df, target, lags=7)
 
-    # ✅ Ensure `date` column is formatted correctly for time-series models
+    # ✅ Ensure `date` column is formatted correctly
     if 'date' in merged_df.columns:
         merged_df['date'] = pd.to_datetime(merged_df['date'], errors='coerce', utc=True)
         merged_df.set_index('date', inplace=True)  # Set as index
@@ -77,7 +53,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     X = merged_df[features]
     y = merged_df[target]
 
-    # ✅ Ensure `y` is a 1D Series for ARIMA
+    # ✅ Ensure `y` is a 1D Series
     if isinstance(y, pd.DataFrame):
         y = y.iloc[:, 0]  
 
@@ -89,55 +65,26 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     print(f"🏋️ Training model: {model_type}...")
 
-    # ✅ Model Selection
+    # ✅ Model Selection with Hyperparameter Tuning
     model = None
-    y_pred = None
-    y_true = y  # Default for non-ARIMA models
-
     if model_type == "linear_regression":
-        model = LinearRegression()
+        model = Ridge(alpha=1.0)  # ✅ Using Ridge Regression (Regularized Linear Regression)
     
     elif model_type == "random_forest":
         model = RandomForestRegressor(n_estimators=100, max_depth=15, min_samples_split=2, random_state=42)
 
-    elif model_type == "arima":
-        from statsmodels.tsa.arima.model import ARIMA
-
-        # ✅ Ensure `y` has a proper datetime index
-        if not isinstance(y.index, pd.DatetimeIndex):
-            print("⚠️ ARIMA requires a datetime index. Assigning a default range...")
-            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")
-
-        # ✅ Check if ARIMA is suitable
-        y_shifted = y.shift(1).dropna()  # Remove NaN values before checking correlation
-        y_shifted_next = y_shifted.shift(1).dropna()  # Ensure both series have same length
-
-        if len(y_shifted) > 1 and len(y_shifted_next) == len(y_shifted) and r2_score(y_shifted, y_shifted_next) < 0.5:
-            print("⚠️ ARIMA is not a good fit for this dataset. Consider a different model.")
-            return None, None, "⚠️ ARIMA is not suitable for this dataset. Try another model."
-
-        try:
-            model = ARIMA(y, order=(5,1,0)).fit()
-            y_pred = model.predict(start=len(y), end=len(y)+4)
-            y_true = y.iloc[-len(y_pred):]  # Align y_true for evaluation
-        except Exception as e:
-            print(f"❌ ARIMA Model Training Failed: {e}")
-            return None, None, f"❌ ARIMA Model Failed: {e}"
-
-
-    # ✅ Train non-ARIMA models
-    if model_type in ["linear_regression", "random_forest"]:
-        try:
-            model.fit(X_scaled, y)
-            y_pred = model.predict(X_scaled)
-        except Exception as e:
-            print(f"❌ Model Training Failed: {e}")
-            return None, None, f"❌ Model Training Failed: {e}"
+    # ✅ Train Model
+    try:
+        model.fit(X_scaled, y)
+        y_pred = model.predict(X_scaled)
+    except Exception as e:
+        print(f"❌ Model Training Failed: {e}")
+        return None, None, f"❌ Model Training Failed: {e}"
 
     # ✅ Compute Model Performance Metrics
-    mse = mean_squared_error(y_true, y_pred)
+    mse = mean_squared_error(y, y_pred)
     rmse = np.sqrt(mse)
-    r2 = r2_score(y_true, y_pred)
+    r2 = r2_score(y, y_pred)
 
     print(f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}")
 
