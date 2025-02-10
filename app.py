@@ -9,9 +9,18 @@ import fin_trends
 app = Flask(__name__, template_folder="templates")
 
 # Ensure writable directory exists for storing generated files
+import os
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
-os.makedirs(GENERATED_DIR, exist_ok=True)
+
+# ✅ Only create the directory if it doesn't already exist
+if not os.path.exists(GENERATED_DIR):
+    os.makedirs(GENERATED_DIR)
+    print(f"📂 Created directory: {GENERATED_DIR}")
+else:
+    print(f"✅ Directory already exists: {GENERATED_DIR}")
+
 
 @app.route("/")
 def home():
