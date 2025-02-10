@@ -81,31 +81,18 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     if isinstance(y, pd.DataFrame):
         y = y.iloc[:, 0]  
 
-    # ✅ Feature Selection: Drop weak features (< 0.2 correlation)
-    correlation_matrix = merged_df.corr(numeric_only=True)
-    strong_features = correlation_matrix[target].abs().sort_values(ascending=False)
-    strong_features = strong_features[strong_features > 0.2].index.tolist()
-
-    if target in strong_features:
-        strong_features.remove(target)  # Remove target from predictor list
-
-    if len(strong_features) == 0:
-        print("⚠️ No strongly correlated features found! Using all features.")
-        strong_features = features  # Use all features if no strong ones exist
-
-    X = merged_df[strong_features]
-    print(f"📊 Selected features: {strong_features}")
+    print(f"📊 Selected features: {features}")
 
     # ✅ Standardize features for better model performance
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # ✅ K-Fold Cross-Validation (5-fold)
-    kfold = KFold(n_splits=5, shuffle=True, random_state=42)
-
     print(f"🏋️ Training model: {model_type}...")
 
-    # ✅ Model Selection with Optimized Parameters
+    # ✅ Model Selection
+    model = None
+    y_pred = None
+
     if model_type == "linear_regression":
         model = LinearRegression()
     
@@ -118,27 +105,28 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         # ✅ Ensure `y` has a proper datetime index
         if not isinstance(y.index, pd.DatetimeIndex):
             print("⚠️ ARIMA requires a datetime index. Assigning a default range...")
-            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")  # Assign default index
+            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")
 
-        # ✅ Check stationarity
-        is_stationary = check_stationarity(y)
+        try:
+            model = ARIMA(y, order=(5,1,0)).fit()
+            y_pred = model.predict(start=len(y), end=len(y)+4)
+        except Exception as e:
+            print(f"❌ ARIMA Model Training Failed: {e}")
+            return None, None, f"❌ ARIMA Model Failed: {e}"
 
-        # ✅ Optimize (p,d,q) if needed
-        if not is_stationary:
-            optimal_order = optimize_arima(y)
-            print(f"✅ Optimal ARIMA Order Found: {optimal_order}")
-        else:
-            optimal_order = (5,1,0)  # Default if already stationary
+    # ✅ Train non-ARIMA models
+    if model_type in ["linear_regression", "random_forest"]:
+        try:
+            model.fit(X_scaled, y)
+            y_pred = model.predict(X_scaled)
+        except Exception as e:
+            print(f"❌ Model Training Failed: {e}")
+            return None, None, f"❌ Model Training Failed: {e}"
 
-        # ✅ Train ARIMA Model
-        model = ARIMA(y, order=optimal_order)
-        model = model.fit()
-        
-        # ✅ Make Predictions for the Next 5 Days
-        y_pred = model.predict(start=len(y), end=len(y)+4)
-
-    else:
-        return None, None, "❌ Invalid model type selected."
+    # ✅ Ensure `y_pred` is Defined
+    if y_pred is None:
+        print("❌ Prediction failed, skipping performance calculation.")
+        return None, None, "❌ Model failed to generate predictions."
 
     # ✅ Compute Model Performance Metrics
     mse = mean_squared_error(y[-len(y_pred):], y_pred)
@@ -173,7 +161,7 @@ df = pd.read_csv("{primary_csv}")
 target_col = df.columns[1]
 
 # Apply feature selection
-selected_features = {strong_features}
+selected_features = {features}
 X = df[selected_features]
 y = df[target_col]
 
