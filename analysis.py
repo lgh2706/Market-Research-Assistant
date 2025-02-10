@@ -45,8 +45,17 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     # ✅ Apply time-lagging
     merged_df = add_time_lags(merged_df, target, lags=7)
 
+    # ✅ Ensure `date` column is formatted correctly for time-series models
+    if 'date' in merged_df.columns:
+        merged_df['date'] = pd.to_datetime(merged_df['date'], errors='coerce')
+        merged_df.set_index('date', inplace=True)  # Set as index
+
     X = merged_df[features]
     y = merged_df[target]
+
+    # ✅ Ensure `y` is a 1D Series for ARIMA
+    if isinstance(y, pd.DataFrame):
+        y = y.iloc[:, 0]  
 
     # ✅ Feature Selection: Drop weak features (< 0.2 correlation)
     correlation_matrix = merged_df.corr(numeric_only=True)
@@ -81,7 +90,14 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     elif model_type == "arima":
         from statsmodels.tsa.arima.model import ARIMA
-        model = ARIMA(y, order=(5,1,0))  # (p,d,q) order optimized for standard trends
+
+        # ✅ Ensure `y` has a proper datetime index
+        if not isinstance(y.index, pd.DatetimeIndex):
+            print("⚠️ Warning: ARIMA requires a datetime index. Converting...")
+            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")  # Fake index if missing
+
+        model = ARIMA(y, order=(5,1,0))
+        model = model.fit()
 
     else:
         return None, None, "❌ Invalid model type selected."
@@ -91,12 +107,15 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         print(f"📊 Cross-validation R² Scores: {scores}")
         print(f"📊 Mean R² Score: {scores.mean():.4f}")
     
-    model.fit(X_scaled, y)
-    y_pred = model.predict(X_scaled)
+    if model_type in ["linear_regression", "random_forest"]:
+        model.fit(X_scaled, y)
+        y_pred = model.predict(X_scaled)
+    else:  # For ARIMA
+        y_pred = model.predict(start=len(y), end=len(y)+5)
 
-    mse = mean_squared_error(y, y_pred)
+    mse = mean_squared_error(y[-len(y_pred):], y_pred)
     rmse = np.sqrt(mse)
-    r2 = r2_score(y, y_pred)
+    r2 = r2_score(y[-len(y_pred):], y_pred)
 
     print(f"✅ Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}")
 
