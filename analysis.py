@@ -124,9 +124,9 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             return None, None, f"❌ Model Training Failed: {e}"
 
     # ✅ Compute Model Performance Metrics
-    mse = mean_squared_error(y[-len(y_pred):], y_pred)
+    mse = mean_squared_error(y, y_pred)
     rmse = np.sqrt(mse)
-    r2 = r2_score(y[-len(y_pred):], y_pred)
+    r2 = r2_score(y, y_pred)
 
     print(f"✅ Model trained successfully.")
     print(f"📊 Final Results:")
