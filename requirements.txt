@@ -8,4 +8,5 @@ pandas
 scikit-learn
 yfinance
 statsmodels
-pmdarima
+numpy==1.23.5
+pmdarima==2.0.3
