@@ -109,7 +109,8 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")
 
         # ✅ Check if ARIMA is suitable
-        if r2_score(y, y.shift(1)) < 0.5:  # Weak correlation between previous and next values
+        y_shifted = y.shift(1).dropna()  # Drop NaN values before checking correlation
+        if len(y_shifted) > 1 and r2_score(y_shifted, y_shifted.shift(1).dropna()) < 0.5:
             print("⚠️ ARIMA is not a good fit for this dataset. Consider a different model.")
             return None, None, "⚠️ ARIMA is not suitable for this dataset. Try another model."
 
