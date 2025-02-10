@@ -7,3 +7,4 @@ fpdf
 pandas
 scikit-learn
 yfinance
+statsmodels
