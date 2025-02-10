@@ -135,11 +135,21 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         model = model.fit()
         
         # ✅ Make Predictions for the Next 5 Days
-        forecast = model.predict(start=len(y), end=len(y)+4)
-        print(f"📊 ARIMA Forecast: {forecast}")
+        y_pred = model.predict(start=len(y), end=len(y)+4)
 
     else:
         return None, None, "❌ Invalid model type selected."
+
+    # ✅ Compute Model Performance Metrics
+    mse = mean_squared_error(y[-len(y_pred):], y_pred)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y[-len(y_pred):], y_pred)
+
+    print(f"✅ Model trained successfully.")
+    print(f"📊 Final Results:")
+    print(f"    🔹 MSE: {mse:.4f}")
+    print(f"    🔹 RMSE: {rmse:.4f}")
+    print(f"    🔹 R² Score: {r2:.4f}")
 
     # ✅ Save Model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
@@ -185,6 +195,5 @@ print(f"R² Score: {{r2:.4f}}")
         print(f"💾 Script saved to: {script_filename}")
     except Exception as e:
         print(f"❌ Error saving script: {e}")
-        script_filename = None  # Prevents NoneType error
 
     return model_filename, script_filename, f"Model trained successfully."
