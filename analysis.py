@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import joblib
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
@@ -168,4 +168,4 @@ print(f"R² Score: {{r2:.4f}}")
     except Exception as e:
         print(f"❌ Error saving script: {e}")
 
-    return model_filename, script_filename, f"Model trained successfully. Download trained model [here]({model_filename}) and script [here]({script_filename})."
+    return model_filename, script_filename, f"✅ Model trained successfully.<br>🔹 MSE: {mse:.4f}<br>🔹 RMSE: {rmse:.4f}<br>🔹 R² Score: {r2:.4f}<br><a href='/download_model/{os.path.basename(model_filename)}'>Download Trained Model</a><br><a href='/download_script/{os.path.basename(script_filename)}'>Download Python Script</a>"
