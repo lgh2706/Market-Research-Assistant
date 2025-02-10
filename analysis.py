@@ -7,8 +7,10 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
+import pmdarima as pm  # Auto ARIMA
+from statsmodels.tsa.stattools import adfuller  # ADF test for stationarity
 
-# Disable GPU (Not needed since we removed Neural Network)
+# Disable GPU (Not needed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +24,28 @@ def add_time_lags(df, target_col, lags=7):
         df[f"{target_col}_lag{lag}"] = df[target_col].shift(lag)
     df.dropna(inplace=True)  # Remove rows with NaN values
     return df
+
+def check_stationarity(series):
+    """Perform Augmented Dickey-Fuller (ADF) test for stationarity."""
+    result = adfuller(series.dropna())  # Drop NaN values
+    p_value = result[1]
+    
+    if p_value > 0.05:
+        print(f"⚠️ Warning: Data is NOT stationary (p={p_value:.4f}). Differencing is needed.")
+    else:
+        print(f"✅ Data is stationary (p={p_value:.4f}). No differencing required.")
+
+    return p_value <= 0.05  # Return True if stationary
+
+def optimize_arima(y):
+    """Automatically selects the best (p,d,q) values for ARIMA."""
+    print("🔍 Optimizing ARIMA order...")
+    
+    auto_arima_model = pm.auto_arima(
+        y, seasonal=False, stepwise=True, suppress_warnings=True, trace=True
+    )
+    
+    return auto_arima_model.order  # Returns (p,d,q)
 
 def train_predictive_model(primary_csv, related_csv, model_type="linear_regression"):
     """Trains a predictive model using supervised learning with time-lagged features and cross-validation."""
@@ -93,31 +117,29 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
         # ✅ Ensure `y` has a proper datetime index
         if not isinstance(y.index, pd.DatetimeIndex):
-            print("⚠️ Warning: ARIMA requires a datetime index. Converting...")
-            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")  # Fake index if missing
+            print("⚠️ ARIMA requires a datetime index. Assigning a default range...")
+            y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")  # Assign default index
 
-        model = ARIMA(y, order=(5,1,0))
+        # ✅ Check stationarity
+        is_stationary = check_stationarity(y)
+
+        # ✅ Optimize (p,d,q) if needed
+        if not is_stationary:
+            optimal_order = optimize_arima(y)
+            print(f"✅ Optimal ARIMA Order Found: {optimal_order}")
+        else:
+            optimal_order = (5,1,0)  # Default if already stationary
+
+        # ✅ Train ARIMA Model
+        model = ARIMA(y, order=optimal_order)
         model = model.fit()
+        
+        # ✅ Make Predictions for the Next 5 Days
+        forecast = model.predict(start=len(y), end=len(y)+4)
+        print(f"📊 ARIMA Forecast: {forecast}")
 
     else:
         return None, None, "❌ Invalid model type selected."
-
-    if model_type in ["linear_regression", "random_forest"]:
-        scores = cross_val_score(model, X_scaled, y, cv=kfold, scoring='r2')
-        print(f"📊 Cross-validation R² Scores: {scores}")
-        print(f"📊 Mean R² Score: {scores.mean():.4f}")
-    
-    if model_type in ["linear_regression", "random_forest"]:
-        model.fit(X_scaled, y)
-        y_pred = model.predict(X_scaled)
-    else:  # For ARIMA
-        y_pred = model.predict(start=len(y), end=len(y)+5)
-
-    mse = mean_squared_error(y[-len(y_pred):], y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y[-len(y_pred):], y_pred)
-
-    print(f"✅ Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}")
 
     # ✅ Save Model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
@@ -165,4 +187,4 @@ print(f"R² Score: {{r2:.4f}}")
         print(f"❌ Error saving script: {e}")
         script_filename = None  # Prevents NoneType error
 
-    return model_filename, script_filename, f"Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}"
+    return model_filename, script_filename, f"Model trained successfully."
