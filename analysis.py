@@ -123,11 +123,6 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             print(f"❌ Model Training Failed: {e}")
             return None, None, f"❌ Model Training Failed: {e}"
 
-    # ✅ Ensure `y_pred` is Defined
-    if y_pred is None:
-        print("❌ Prediction failed, skipping performance calculation.")
-        return None, None, "❌ Model failed to generate predictions."
-
     # ✅ Compute Model Performance Metrics
     mse = mean_squared_error(y[-len(y_pred):], y_pred)
     rmse = np.sqrt(mse)
@@ -142,6 +137,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     # ✅ Save Model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
     joblib.dump(model, model_filename)
+    print(f"💾 Model saved to: {model_filename}")
 
     # ✅ Generate `run_analysis.py` script
     script_filename = os.path.join(GENERATED_DIR, "run_analysis.py")
@@ -150,29 +146,17 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             f.write(f"""
 import joblib
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Load trained model
 model = joblib.load("predictive_model.pkl")
 
-# Load dataset
 df = pd.read_csv("{primary_csv}")
-target_col = df.columns[1]
+X = df.iloc[:, 1:]
+y = df.iloc[:, 0]
 
-# Apply feature selection
-selected_features = {features}
-X = df[selected_features]
-y = df[target_col]
+y_pred = model.predict(X)
 
-# Standardize features
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Make predictions
-y_pred = model.predict(X_scaled)
-
-# Evaluate performance
 mse = mean_squared_error(y, y_pred)
 r2 = r2_score(y, y_pred)
 
@@ -184,4 +168,4 @@ print(f"R² Score: {{r2:.4f}}")
     except Exception as e:
         print(f"❌ Error saving script: {e}")
 
-    return model_filename, script_filename, f"Model trained successfully."
+    return model_filename, script_filename, f"Model trained successfully. Download trained model [here]({model_filename}) and script [here]({script_filename})."
