@@ -109,8 +109,10 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")
 
         # ✅ Check if ARIMA is suitable
-        y_shifted = y.shift(1).dropna()  # Drop NaN values before checking correlation
-        if len(y_shifted) > 1 and r2_score(y_shifted, y_shifted.shift(1).dropna()) < 0.5:
+        y_shifted = y.shift(1).dropna()  # Remove NaN values before checking correlation
+        y_shifted_next = y_shifted.shift(1).dropna()  # Ensure both series have same length
+
+        if len(y_shifted) > 1 and len(y_shifted_next) == len(y_shifted) and r2_score(y_shifted, y_shifted_next) < 0.5:
             print("⚠️ ARIMA is not a good fit for this dataset. Consider a different model.")
             return None, None, "⚠️ ARIMA is not suitable for this dataset. Try another model."
 
@@ -121,6 +123,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         except Exception as e:
             print(f"❌ ARIMA Model Training Failed: {e}")
             return None, None, f"❌ ARIMA Model Failed: {e}"
+
 
     # ✅ Train non-ARIMA models
     if model_type in ["linear_regression", "random_forest"]:
