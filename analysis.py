@@ -2,10 +2,11 @@ import os
 import pandas as pd
 import joblib
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.model_selection import train_test_split, cross_val_score, KFold, GridSearchCV
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.feature_selection import RFE
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Disable GPU (Not needed)
@@ -23,8 +24,17 @@ def add_time_lags(df, target_col, lags=7):
     df.dropna(inplace=True)  # Remove rows with NaN values
     return df
 
+def select_best_features(X, y):
+    """Uses Recursive Feature Elimination (RFE) to find the most important features."""
+    model = Ridge(alpha=1.0)
+    selector = RFE(model, n_features_to_select=5)  # ✅ Keep the 5 most important features
+    selector.fit(X, y)
+    selected_features = X.columns[selector.support_]
+    print(f"📊 Best features selected: {selected_features.tolist()}")
+    return selected_features
+
 def train_predictive_model(primary_csv, related_csv, model_type="linear_regression"):
-    """Trains a predictive model using supervised learning with time-lagged features and cross-validation."""
+    """Trains a predictive model using optimized Ridge Regression and Random Forest."""
     try:
         print("📥 Loading datasets...")
         primary_df = pd.read_csv(primary_csv)
@@ -57,7 +67,11 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     if isinstance(y, pd.DataFrame):
         y = y.iloc[:, 0]  
 
-    print(f"📊 Selected features: {features}")
+    print(f"📊 Initial Features: {features}")
+
+    # ✅ Feature Selection Using Recursive Feature Elimination (RFE)
+    best_features = select_best_features(X, y)
+    X = X[best_features]  # ✅ Keep only best features
 
     # ✅ Feature Scaling
     scaler = StandardScaler()
@@ -65,12 +79,19 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     print(f"🏋️ Training model: {model_type}...")
 
-    # ✅ Model Selection with Polynomial Features & Ridge Regression
+    # ✅ Model Selection with Polynomial Features & Ridge Regression Optimization
     model = None
     if model_type == "linear_regression":
         poly = PolynomialFeatures(degree=2, include_bias=False)  # ✅ Add polynomial features
         X_poly = poly.fit_transform(X_scaled)
-        model = Ridge(alpha=1.0)  # ✅ Regularized Linear Regression
+
+        # ✅ Hyperparameter tuning for Ridge Regression
+        param_grid = {'alpha': [0.1, 1, 10, 100]}  # ✅ Testing different regularization strengths
+        grid_search = GridSearchCV(Ridge(), param_grid, cv=5, scoring='r2')
+        grid_search.fit(X_poly, y)
+        best_alpha = grid_search.best_params_['alpha']
+        print(f"✅ Best Ridge alpha: {best_alpha}")
+        model = Ridge(alpha=best_alpha)  # ✅ Use the best alpha
     
     elif model_type == "random_forest":
         model = RandomForestRegressor(n_estimators=100, max_depth=15, min_samples_split=2, random_state=42)
