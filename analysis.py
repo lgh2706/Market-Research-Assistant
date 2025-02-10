@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import joblib
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
@@ -128,11 +128,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     rmse = np.sqrt(mse)
     r2 = r2_score(y, y_pred)
 
-    print(f"✅ Model trained successfully.")
-    print(f"📊 Final Results:")
-    print(f"    🔹 MSE: {mse:.4f}")
-    print(f"    🔹 RMSE: {rmse:.4f}")
-    print(f"    🔹 R² Score: {r2:.4f}")
+    print(f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}")
 
     # ✅ Save Model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
@@ -168,4 +164,4 @@ print(f"R² Score: {{r2:.4f}}")
     except Exception as e:
         print(f"❌ Error saving script: {e}")
 
-    return model_filename, script_filename, f"✅ Model trained successfully.<br>🔹 MSE: {mse:.4f}<br>🔹 RMSE: {rmse:.4f}<br>🔹 R² Score: {r2:.4f}<br><a href='/download_model/{os.path.basename(model_filename)}'>Download Trained Model</a><br><a href='/download_script/{os.path.basename(script_filename)}'>Download Python Script</a>"
+    return model_filename, script_filename, f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}<br><a href='/download_model/{os.path.basename(model_filename)}'>Download Trained Model</a> | <a href='/download_script/{os.path.basename(script_filename)}'>Download Python Script</a>"
