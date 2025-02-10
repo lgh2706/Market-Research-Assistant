@@ -108,6 +108,11 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             print("⚠️ ARIMA requires a datetime index. Assigning a default range...")
             y.index = pd.date_range(start="2020-01-01", periods=len(y), freq="D")
 
+        # ✅ Check if ARIMA is suitable
+        if r2_score(y, y.shift(1)) < 0.5:  # Weak correlation between previous and next values
+            print("⚠️ ARIMA is not a good fit for this dataset. Consider a different model.")
+            return None, None, "⚠️ ARIMA is not suitable for this dataset. Try another model."
+
         try:
             model = ARIMA(y, order=(5,1,0)).fit()
             y_pred = model.predict(start=len(y), end=len(y)+4)
@@ -166,4 +171,4 @@ print(f"R² Score: {{r2:.4f}}")
     except Exception as e:
         print(f"❌ Error saving script: {e}")
 
-    return model_filename, script_filename, f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}<br><a href='/download_model/{os.path.basename(model_filename)}'>Download Trained Model</a> | <a href='/download_script/{os.path.basename(script_filename)}'>Download Python Script</a>"
+    return model_filename, script_filename, f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}"
