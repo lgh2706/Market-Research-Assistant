@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.metrics import mean_squared_error, r2_score
@@ -59,24 +59,27 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     print(f"📊 Selected features: {features}")
 
-    # ✅ Standardize features for better model performance
+    # ✅ Feature Scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
     print(f"🏋️ Training model: {model_type}...")
 
-    # ✅ Model Selection with Hyperparameter Tuning
+    # ✅ Model Selection with Polynomial Features & Ridge Regression
     model = None
     if model_type == "linear_regression":
-        model = Ridge(alpha=1.0)  # ✅ Using Ridge Regression (Regularized Linear Regression)
+        poly = PolynomialFeatures(degree=2, include_bias=False)  # ✅ Add polynomial features
+        X_poly = poly.fit_transform(X_scaled)
+        model = Ridge(alpha=1.0)  # ✅ Regularized Linear Regression
     
     elif model_type == "random_forest":
         model = RandomForestRegressor(n_estimators=100, max_depth=15, min_samples_split=2, random_state=42)
+        X_poly = X_scaled  # ✅ No need for polynomial features in Random Forest
 
     # ✅ Train Model
     try:
-        model.fit(X_scaled, y)
-        y_pred = model.predict(X_scaled)
+        model.fit(X_poly, y)
+        y_pred = model.predict(X_poly)
     except Exception as e:
         print(f"❌ Model Training Failed: {e}")
         return None, None, f"❌ Model Training Failed: {e}"
