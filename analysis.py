@@ -71,7 +71,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
 
     # ✅ Ensure `date` column is formatted correctly for time-series models
     if 'date' in merged_df.columns:
-        merged_df['date'] = pd.to_datetime(merged_df['date'], errors='coerce')
+        merged_df['date'] = pd.to_datetime(merged_df['date'], errors='coerce', utc=True)
         merged_df.set_index('date', inplace=True)  # Set as index
 
     X = merged_df[features]
@@ -92,6 +92,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     # ✅ Model Selection
     model = None
     y_pred = None
+    y_true = y  # Default for non-ARIMA models
 
     if model_type == "linear_regression":
         model = LinearRegression()
@@ -110,6 +111,7 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
         try:
             model = ARIMA(y, order=(5,1,0)).fit()
             y_pred = model.predict(start=len(y), end=len(y)+4)
+            y_true = y.iloc[-len(y_pred):]  # Align y_true for evaluation
         except Exception as e:
             print(f"❌ ARIMA Model Training Failed: {e}")
             return None, None, f"❌ ARIMA Model Failed: {e}"
@@ -124,9 +126,9 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
             return None, None, f"❌ Model Training Failed: {e}"
 
     # ✅ Compute Model Performance Metrics
-    mse = mean_squared_error(y, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
-    r2 = r2_score(y, y_pred)
+    r2 = r2_score(y_true, y_pred)
 
     print(f"✅ Model trained successfully. 🔹 MSE: {mse:.4f} 🔹 RMSE: {rmse:.4f} 🔹 R² Score: {r2:.4f}")
 
