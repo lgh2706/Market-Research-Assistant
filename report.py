@@ -14,10 +14,16 @@ if not os.path.exists(GENERATED_DIR):
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
 
+def safe_text(text):
+    """Ensure text is properly encoded for PDF output (Fixes Unicode Errors)."""
+    return text.encode("utf-8", "replace").decode("utf-8")
+
 def generate_industry_report(industry):
+    """Generates an industry report using Wikipedia data and formats it into a structured PDF."""
+    
+    # ✅ Fetch Wikipedia content
     wiki_wiki = wikipediaapi.Wikipedia(user_agent="MarketResearchBot/1.0", language="en")
     page = wiki_wiki.page(industry)
-    
     wiki_url = page.fullurl if page.exists() else None
 
     if not page.exists():
@@ -39,6 +45,7 @@ def generate_industry_report(industry):
 
     report_text = response.choices[0].message.content.strip().replace("**", "").replace(":", "")
 
+    # ✅ Define report sections
     section_titles = [
         "Industry Overview",
         "Market Size & Growth Trends",
@@ -57,6 +64,7 @@ def generate_industry_report(industry):
             end_index = report_text.find(section_titles[i + 1]) if i + 1 < len(section_titles) else len(report_text)
             section_data[title] = report_text[start_index + len(title):end_index].strip()
 
+    # ✅ Create PDF file
     pdf_filename = os.path.join(GENERATED_DIR, f"{industry}_Industry_Report.pdf")
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -95,7 +103,7 @@ def generate_industry_report(industry):
         for paragraph in paragraphs:
             if paragraph.strip():
                 pdf.cell(5)  # Indent bullet points
-                pdf.multi_cell(0, 6, f"• {paragraph[:2000].encode('latin-1', 'replace').decode('latin-1')}")
+                pdf.multi_cell(0, 6, safe_text(f"• {paragraph[:2000]}"))
                 pdf.ln(2)
 
     # ✅ Add Wikipedia Source Information
@@ -105,7 +113,7 @@ def generate_industry_report(industry):
         pdf.cell(200, 10, "Source & References", ln=True, align="C")
         pdf.ln(8)
         pdf.set_font("Arial", size=11)
-        pdf.multi_cell(0, 6, f"This report is based entirely on publicly available data from Wikipedia.\nWikipedia Source: {wiki_url}")
+        pdf.multi_cell(0, 6, safe_text(f"This report is based entirely on publicly available data from Wikipedia.\nWikipedia Source: {wiki_url}"))
         pdf.ln(5)
 
     # ✅ Footer with Page Numbers
