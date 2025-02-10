@@ -2,13 +2,13 @@ import os
 import pandas as pd
 import joblib
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Disable GPU (Not needed anymore since we removed Neural Network)
+# Disable GPU (Not needed since we removed Neural Network)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,39 +16,37 @@ GENERATED_DIR = os.path.join(BASE_DIR, "generated_files")
 if not os.path.exists(GENERATED_DIR):
     os.makedirs(GENERATED_DIR)
 
+def add_time_lags(df, target_col, lags=7):
+    """Creates lagged features for time-series forecasting."""
+    for lag in range(1, lags + 1):
+        df[f"{target_col}_lag{lag}"] = df[target_col].shift(lag)
+    df.dropna(inplace=True)  # Remove rows with NaN values
+    return df
+
 def train_predictive_model(primary_csv, related_csv, model_type="linear_regression"):
+    """Trains a predictive model using supervised learning with time-lagged features and cross-validation."""
     try:
         print("📥 Loading datasets...")
         primary_df = pd.read_csv(primary_csv)
         related_df = pd.read_csv(related_csv)
     except Exception as e:
-        print(f"❌ Error reading CSV files: {e}")
-        return None, None, f"Error reading CSV files: {e}"
-
-    if primary_df.shape[1] < 2 or related_df.shape[1] < 2:
-        print("❌ One of the datasets does not contain enough columns for training.")
-        return None, None, "One of the datasets does not contain enough columns for training."
+        return None, None, f"❌ Error reading CSV files: {e}"
 
     print("🔄 Merging datasets...")
     merged_df = pd.merge(primary_df, related_df, on='date', how='outer').fillna(0)
 
     if merged_df.empty:
-        print("❌ Merged dataset is empty.")
-        return None, None, "Merged dataset is empty."
+        return None, None, "❌ Merged dataset is empty."
 
     print("🚀 Preparing training data...")
-    target = primary_df.columns[1]  # First feature column as target variable (y)
-    features = [col for col in related_df.columns if col != "date"]  # Exclude "date" column from predictors
+    target = primary_df.columns[1]  # First feature column as target variable
+    features = [col for col in related_df.columns if col != "date"]
 
-    if len(features) == 0:
-        print("❌ Not enough predictor variables.")
-        return None, None, "Not enough predictor variables."
+    # ✅ Apply time-lagging
+    merged_df = add_time_lags(merged_df, target, lags=7)
 
     X = merged_df[features]
     y = merged_df[target]
-
-    # ✅ Remove columns with all NaN values
-    X = X.dropna(axis=1, how='all')
 
     # ✅ Feature Selection: Drop weak features (< 0.2 correlation)
     correlation_matrix = merged_df.corr(numeric_only=True)
@@ -69,8 +67,8 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Train-Test Split (Now 75%-25% instead of 80%-20%)
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.25, random_state=42)
+    # ✅ K-Fold Cross-Validation (5-fold)
+    kfold = KFold(n_splits=5, shuffle=True, random_state=42)
 
     print(f"🏋️ Training model: {model_type}...")
 
@@ -80,45 +78,66 @@ def train_predictive_model(primary_csv, related_csv, model_type="linear_regressi
     
     elif model_type == "random_forest":
         model = RandomForestRegressor(n_estimators=100, max_depth=15, min_samples_split=2, random_state=42)
-    
+
+    elif model_type == "arima":
+        from statsmodels.tsa.arima.model import ARIMA
+        model = ARIMA(y, order=(5,1,0))  # (p,d,q) order optimized for standard trends
+
     else:
-        print("❌ Invalid model type selected.")
-        return None, None, "Invalid model type selected."
+        return None, None, "❌ Invalid model type selected."
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    if model_type in ["linear_regression", "random_forest"]:
+        scores = cross_val_score(model, X_scaled, y, cv=kfold, scoring='r2')
+        print(f"📊 Cross-validation R² Scores: {scores}")
+        print(f"📊 Mean R² Score: {scores.mean():.4f}")
+    
+    model.fit(X_scaled, y)
+    y_pred = model.predict(X_scaled)
 
-    mse = mean_squared_error(y_test, y_pred)
+    mse = mean_squared_error(y, y_pred)
     rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_pred)
+    r2 = r2_score(y, y_pred)
+
     print(f"✅ Model trained successfully. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R² Score: {r2:.4f}")
 
+    # ✅ Save Model
     model_filename = os.path.join(GENERATED_DIR, "predictive_model.pkl")
     joblib.dump(model, model_filename)
-    print(f"💾 Model saved to: {model_filename}")
 
-    # ✅ Ensure script file is properly assigned
+    # ✅ Generate `run_analysis.py` script
     script_filename = os.path.join(GENERATED_DIR, "run_analysis.py")
     try:
         with open(script_filename, "w") as f:
             f.write(f"""
 import joblib
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Load trained model
 model = joblib.load("predictive_model.pkl")
 
+# Load dataset
 df = pd.read_csv("{primary_csv}")
-X = df.iloc[:, 1:]
-y = df.iloc[:, 0]
+target_col = df.columns[1]
 
-y_pred = model.predict(X)
+# Apply feature selection
+selected_features = {strong_features}
+X = df[selected_features]
+y = df[target_col]
 
+# Standardize features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Make predictions
+y_pred = model.predict(X_scaled)
+
+# Evaluate performance
 mse = mean_squared_error(y, y_pred)
 r2 = r2_score(y, y_pred)
 
-print("Model Performance:")
+print("🔎 Model Performance:")
 print(f"Mean Squared Error: {{mse:.4f}}")
 print(f"R² Score: {{r2:.4f}}")
 """)
